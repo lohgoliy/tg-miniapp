@@ -91,7 +91,7 @@
             { id: 'nothing', emoji: '💨', name: 'Ничего', stars: 0,  weight: 50 },
             { id: 'star1',   emoji: '⭐', name: '1 звезда', stars: 1, weight: 30 },
             { id: 'star5',   emoji: '🌟', name: '5 звёзд',  stars: 5, weight: 12 },
-            { id: 'bear',    emoji: '🧸', name: 'Мишка',   stars: 0, weight: 5  },
+            { id: 'bear',    emoji: '🧸', name: 'Мишка',   stars: 0, weight: 3  },
             { id: 'heart',   emoji: '❤️', name: 'Сердце',  stars: 0, weight: 3  },
         ];
 
