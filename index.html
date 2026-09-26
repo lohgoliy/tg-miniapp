@@ -105,39 +105,65 @@
         const $spinBtn   = document.getElementById('spin-btn');
         const $inventory = document.getElementById('inventory');
 
-        // ==== СОХРАНЕНИЕ ====
-        function save() {
-            tg.CloudStorage.setItem('balance', String(balance));
-            tg.CloudStorage.setItem('inventory', JSON.stringify(inventory));
+       // ==== СОХРАНЕНИЕ ====
+// Сохраняем, только когда данные точно изменились
+function save() {
+    tg.CloudStorage.setItem('balance', String(balance));
+    tg.CloudStorage.setItem('inventory', JSON.stringify(inventory));
+}
+
+// Загружаем данные ПЕРЕД отрисовкой
+function load(callback) {
+    // Сначала получаем баланс
+    tg.CloudStorage.getItem('balance', (err, val) => {
+        if (!err && val) {
+            balance = parseInt(val, 10) || 0;
         }
-
-        function load() {
-            tg.CloudStorage.getItem('balance', (err, val) => {
-                if (val) balance = parseInt(val) || 0;
-                tg.CloudStorage.getItem('inventory', (err2, val2) => {
-                    if (val2) { try { inventory = JSON.parse(val2); } catch(e) {} }
-                    render();
-                });
-            });
-        }
-
-        // ==== ОТРИСОВКА ====
-        function render() {
-            $balance.innerText = balance;
-            $spinBtn.disabled = spinning || balance < 1;
-
-            if (inventory.length === 0) {
-                $inventory.innerHTML = '<div>Пусто</div>';
-            } else {
-                // группируем одинаковые призы: "🧸 Мишка ×2"
-                const counts = {};
-                inventory.forEach(id => counts[id] = (counts[id] || 0) + 1);
-                $inventory.innerHTML = Object.entries(counts).map(([id, n]) => {
-                    const p = PRIZES.find(x => x.id === id);
-                    return `<div>${p.emoji} ${p.name} ×${n}</div>`;
-                }).join('');
+        
+        // Теперь получаем инвентарь (внутри колбэка баланса, чтобы не было гонки)
+        tg.CloudStorage.getItem('inventory', (err2, val2) => {
+            if (!err2 && val2) {
+                try {
+                    inventory = JSON.parse(val2);
+                } catch(e) {
+                    console.error('Ошибка парсинга инвентаря', e);
+                    inventory = [];
+                }
             }
-        }
+            
+            // Данные загружены, можно вызывать колбэк (отрисовку)
+            if (callback) callback();
+        });
+    });
+}
+
+// ==== ОТРИСОВКА ====
+function render() {
+    $balance.innerText = balance;
+    $spinBtn.disabled = spinning || balance < 1;
+
+    if (inventory.length === 0) {
+        $inventory.innerHTML = '<div>Пусто</div>';
+    } else {
+        const counts = {};
+        inventory.forEach(id => counts[id] = (counts[id] || 0) + 1);
+        $inventory.innerHTML = Object.entries(counts).map(([id, n]) => {
+            const p = PRIZES.find(x => x.id === id);
+            return `<div>${p.emoji} ${p.name} ×${n}</div>`;
+        }).join('');
+    }
+}
+
+// ==== СТАРТ ====
+// Сначала загружаем, потом проверяем на первый запуск, потом рендерим
+load(() => {
+    // Если баланс 0 и инвентарь пуст — выдаем стартовые 10 звезд
+    if (balance === 0 && inventory.length === 0) {
+        balance = 10;
+        save();
+    }
+    render();
+});
 
         // ==== ВЫБОР ПРИЗА (взвешенный рандом) ====
         function pickPrize() {
