@@ -3,49 +3,197 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Моё мини-приложение</title>
+    <title>Cartel Idle</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
+            background: #1a1a1a;
+            color: #eee;
+            padding: 16px;
             text-align: center;
-            background: #f0f0f0;
+            min-height: 100vh;
         }
-        h1 { color: #333; }
+        h1 { font-size: 22px; margin-bottom: 12px; color: #ffcc00; }
+        .balance {
+            font-size: 20px;
+            background: #2a2a2a;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 12px;
+        }
+        .balance b { color: #ffcc00; }
+        #slot {
+            font-size: 80px;
+            height: 140px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #2a2a2a;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            user-select: none;
+        }
+        #slot.spin { animation: shake 0.1s infinite; }
+        @keyframes shake {
+            0% { transform: translateY(-5px); }
+            50% { transform: translateY(5px); }
+            100% { transform: translateY(-5px); }
+        }
         button {
-            padding: 12px 24px;
+            padding: 14px 28px;
             font-size: 16px;
-            background: #2AABEE;
-            color: white;
+            background: #ffcc00;
+            color: #1a1a1a;
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+            margin-bottom: 16px;
         }
-        button:active { background: #1e8ac0; }
+        button:disabled { background: #555; color: #888; cursor: not-allowed; }
+        button:active:not(:disabled) { background: #e0b400; }
+        h2 { font-size: 16px; margin: 16px 0 8px; color: #aaa; text-align: left; }
+        #inventory {
+            background: #2a2a2a;
+            border-radius: 10px;
+            padding: 8px;
+            min-height: 60px;
+            text-align: left;
+            font-size: 15px;
+        }
+        #inventory div { padding: 6px; border-bottom: 1px solid #3a3a3a; }
+        #inventory div:last-child { border-bottom: none; }
     </style>
 </head>
 <body>
-    <h1 id="greeting">Загрузка...</h1>
-    <p>Это моё мини-приложение в Telegram.</p>
-    <button id="send-btn">Отправить привет боту</button>
+    <h1>💊 Cartel Idle</h1>
+
+    <div class="balance">Баланс: <b id="balance">0</b> ⭐</div>
+
+    <div id="slot">❓</div>
+
+    <button id="spin-btn">Крутить (1 ⭐)</button>
+
+    <h2>🎒 Инвентарь</h2>
+    <div id="inventory"><div>Пусто</div></div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
 
-        const user = tg.initDataUnsafe.user;
-        if (user) {
-            document.getElementById('greeting').innerText = 'Привет, ' + user.first_name + '!';
-        } else {
-            document.getElementById('greeting').innerText = 'Привет! (не открыто в Telegram)';
+        // ==== ПРИЗЫ ====
+        // weight = шанс выпадения (чем больше, тем чаще)
+        const PRIZES = [
+            { id: 'nothing', emoji: '💨', name: 'Ничего', stars: 0,  weight: 50 },
+            { id: 'star1',   emoji: '⭐', name: '1 звезда', stars: 1, weight: 30 },
+            { id: 'star5',   emoji: '🌟', name: '5 звёзд',  stars: 5, weight: 12 },
+            { id: 'bear',    emoji: '🧸', name: 'Мишка',   stars: 0, weight: 5  },
+            { id: 'heart',   emoji: '❤️', name: 'Сердце',  stars: 0, weight: 3  },
+        ];
+
+        let balance = 0;
+        let inventory = []; // массив id призов
+        let spinning = false;
+
+        // ==== ЭЛЕМЕНТЫ ====
+        const $balance   = document.getElementById('balance');
+        const $slot      = document.getElementById('slot');
+        const $spinBtn   = document.getElementById('spin-btn');
+        const $inventory = document.getElementById('inventory');
+
+        // ==== СОХРАНЕНИЕ ====
+        function save() {
+            tg.CloudStorage.setItem('balance', String(balance));
+            tg.CloudStorage.setItem('inventory', JSON.stringify(inventory));
         }
 
-        document.getElementById('send-btn').addEventListener('click', () => {
-            tg.sendData('Привет от пользователя!');
+        function load() {
+            tg.CloudStorage.getItem('balance', (err, val) => {
+                if (val) balance = parseInt(val) || 0;
+                tg.CloudStorage.getItem('inventory', (err2, val2) => {
+                    if (val2) { try { inventory = JSON.parse(val2); } catch(e) {} }
+                    render();
+                });
+            });
+        }
+
+        // ==== ОТРИСОВКА ====
+        function render() {
+            $balance.innerText = balance;
+            $spinBtn.disabled = spinning || balance < 1;
+
+            if (inventory.length === 0) {
+                $inventory.innerHTML = '<div>Пусто</div>';
+            } else {
+                // группируем одинаковые призы: "🧸 Мишка ×2"
+                const counts = {};
+                inventory.forEach(id => counts[id] = (counts[id] || 0) + 1);
+                $inventory.innerHTML = Object.entries(counts).map(([id, n]) => {
+                    const p = PRIZES.find(x => x.id === id);
+                    return `<div>${p.emoji} ${p.name} ×${n}</div>`;
+                }).join('');
+            }
+        }
+
+        // ==== ВЫБОР ПРИЗА (взвешенный рандом) ====
+        function pickPrize() {
+            const total = PRIZES.reduce((s, p) => s + p.weight, 0);
+            let r = Math.random() * total;
+            for (const p of PRIZES) {
+                if (r < p.weight) return p;
+                r -= p.weight;
+            }
+            return PRIZES[0];
+        }
+
+        // ==== КРУТКА ====
+        $spinBtn.addEventListener('click', () => {
+            if (spinning || balance < 1) return;
+            spinning = true;
+            balance -= 1;
+            render();
+
+            $slot.classList.add('spin');
+
+            // 1.5 секунды "крутится" и показывает случайные эмодзи
+            const shuffleInterval = setInterval(() => {
+                $slot.innerText = PRIZES[Math.floor(Math.random() * PRIZES.length)].emoji;
+            }, 80);
+
+            setTimeout(() => {
+                clearInterval(shuffleInterval);
+                $slot.classList.remove('spin');
+
+                const prize = pickPrize();
+                $slot.innerText = prize.emoji;
+
+                if (prize.stars > 0) {
+                    balance += prize.stars;
+                } else if (prize.id !== 'nothing') {
+                    inventory.push(prize.id);
+                }
+
+                spinning = false;
+                save();
+                render();
+            }, 1500);
         });
+
+        // ==== СТАРТ ====
+        load();
+
+        // на первое время даём 10 звёзд, если баланс = 0
+        setTimeout(() => {
+            if (balance === 0 && inventory.length === 0) {
+                balance = 10;
+                save();
+                render();
+            }
+        }, 500);
     </script>
 </body>
 </html>
