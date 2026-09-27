@@ -25,43 +25,64 @@
         }
         .balance b { color: #ffcc00; }
         #wheel {
-    position: relative;
-    height: 140px;
-    background: #2a2a2a;
-    border-radius: 12px;
-    margin-bottom: 12px;
-    overflow: hidden;
-}
-
-#wheel-track {
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    will-change: transform;
-}
-
-#wheel-track img {
-    width: 100px;
-    height: 100px;
-    object-fit: contain;
-    margin: 0 10px;
-    flex-shrink: 0;
-}
-
-#wheel-pointer {
-    position: absolute;
-    left: 50%;
-    top: 0;
-    width: 3px;
-    height: 100%;
-    background: #ffcc00;
-    transform: translateX(-50%);
-    box-shadow: 0 0 12px #ffcc00;
-    z-index: 2;
-}
+            position: relative;
+            height: 140px;
+            background: #2a2a2a;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            overflow: hidden;
+        }
+        #wheel-track {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            will-change: transform;
+        }
+        #wheel-track.idle {
+            animation: idleScroll 40s linear infinite;
+        }
+        @keyframes idleScroll {
+            from { transform: translateX(0); }
+            to   { transform: translateX(-3600px); }
+        }
+        #wheel-track img {
+            width: 100px;
+            height: 100px;
+            object-fit: contain;
+            margin: 0 10px;
+            flex-shrink: 0;
+        }
+        #wheel-pointer {
+            position: absolute;
+            left: 50%;
+            top: 0;
+            width: 3px;
+            height: 100%;
+            background: #ffcc00;
+            transform: translateX(-50%);
+            box-shadow: 0 0 12px #ffcc00;
+            z-index: 2;
+        }
+        button {
+            padding: 14px 28px;
+            font-size: 16px;
+            background: #ffcc00;
+            color: #1a1a1a;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+            margin-bottom: 8px;
+        }
+        button:disabled { background: #555; color: #888; cursor: not-allowed; }
+        button:active:not(:disabled) { background: #e0b400; }
+        .cheat-btn { background: #ff4444; color: white; }
+        .reset-btn { background: #444; color: white; }
+        h2 { font-size: 16px; margin: 16px 0 8px; color: #aaa; text-align: left; }
         #inventory {
             background: #2a2a2a;
             border-radius: 10px;
@@ -80,13 +101,12 @@
     <div class="balance">Баланс: <b id="balance">0</b> ⭐</div>
 
     <div id="wheel">
-    <div id="wheel-track"></div>
-    <div id="wheel-pointer"></div>
-</div>
+        <div id="wheel-track"></div>
+        <div id="wheel-pointer"></div>
+    </div>
 
     <button id="spin-btn">Крутить (1 ⭐)</button>
 
-    <!-- ВРЕМЕННЫЕ КНОПКИ ДЛЯ ТЕСТА — удали их перед релизом -->
     <button id="cheat-btn" class="cheat-btn">+100 💵 (чит)</button>
     <button id="reset-btn" class="reset-btn">🗑 Сбросить прогресс</button>
 
@@ -99,12 +119,9 @@
         tg.expand();
 
         // ==== ПРИЗЫ ====
-        // weight = шанс выпадения (чем больше, тем чаще)
-        // stars > 0  → сразу добавляет деньги к балансу
-        // stars = 0  → падает в инвентарь как предмет
         const PRIZES = [
             { id: 'empty', icon: 'img/empty.png', name: 'Пусто',    stars: 0, weight: 50 },
-            { id: 'car',   icon: 'img/car1.png',   name: 'Машина',   stars: 1, weight: 30 },
+            { id: 'car',   icon: 'img/car1.png',  name: 'Машина',   stars: 0, weight: 30 },
             { id: 'money', icon: 'img/money.png', name: '5 баксов', stars: 5, weight: 12 },
         ];
 
@@ -116,6 +133,7 @@
         const $balance   = document.getElementById('balance');
         const $spinBtn   = document.getElementById('spin-btn');
         const $inventory = document.getElementById('inventory');
+        const $wheelTrack = document.getElementById('wheel-track');
 
         // ==== СОХРАНЕНИЕ ====
         function save() {
@@ -153,7 +171,7 @@
             }
         }
 
-        // ==== ВЫБОР ПРИЗА (взвешенный рандом) ====
+        // ==== ВЫБОР ПРИЗА ====
         function pickPrize() {
             const total = PRIZES.reduce((s, p) => s + p.weight, 0);
             let r = Math.random() * total;
@@ -164,90 +182,85 @@
             return PRIZES[0];
         }
 
-        // ==== КРУТКА (рулетка) ====
-const $wheelTrack = document.getElementById('wheel-track');
+        // ==== КРУТКА ====
+        const ITEM_WIDTH = 120;
 
-// Ширина одной ячейки: картинка 100px + отступы по 10px с двух сторон = 120px
-const ITEM_WIDTH = 120;
-const ITEM_GAP = 10; // margin между картинками (0 10px)
-
-// Строим длинную ленту из случайных призов
-function buildTrack(count) {
-    $wheelTrack.innerHTML = '';
-    for (let i = 0; i < count; i++) {
-        const p = PRIZES[Math.floor(Math.random() * PRIZES.length)];
-        const img = document.createElement('img');
-        img.src = p.icon;
-        $wheelTrack.appendChild(img);
-    }
-}
-
-// Крутим рулетку и останавливаемся на призе
-function spinWheel(prize, duration = 3500) {
-    const wheelWidth = document.getElementById('wheel').offsetWidth;
-    const centerOffset = wheelWidth / 2 - ITEM_WIDTH / 2;
-
-    // Сначала мелькает много призов (создаём ленту)
-    const trackLength = 40;
-    buildTrack(trackLength);
-
-    // Ставим выигрышный приз в позицию ближе к концу
-    const winnerIndex = trackLength - 5;
-    const winnerImg = $wheelTrack.children[winnerIndex];
-    winnerImg.src = prize.icon;
-
-    // Начальная позиция — левый край ленты
-    let startX = 0;
-    $wheelTrack.style.transition = 'none';
-    $wheelTrack.style.transform = `translateX(${startX}px)`;
-
-    // Куда надо приехать, чтобы выигрышный приз оказался в центре
-    const targetX = -(winnerIndex * (ITEM_WIDTH + ITEM_GAP * 2)) + centerOffset;
-
-    // Небольшое случайное смещение, чтобы не всегда точно в центр
-    const jitter = (Math.random() - 0.5) * 40;
-    const finalX = targetX + jitter;
-
-    // Принудительно применить начальную позицию перед анимацией
-    requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-            $wheelTrack.style.transition = `transform ${duration}ms cubic-bezier(0.15, 0.85, 0.25, 1)`;
-            $wheelTrack.style.transform = `translateX(${finalX}px)`;
-        });
-    });
-}
-
-$spinBtn.addEventListener('click', () => {
-    if (spinning || balance < 1) return;
-    spinning = true;
-    balance -= 1;
-    render();
-
-    const prize = pickPrize();
-
-    spinWheel(prize, 3500);
-
-    setTimeout(() => {
-        if (prize.stars > 0) {
-            balance += prize.stars;
-        } else if (prize.id !== 'empty') {
-            inventory.push(prize.id);
+        function buildTrack(count) {
+            $wheelTrack.innerHTML = '';
+            for (let i = 0; i < count; i++) {
+                const p = PRIZES[Math.floor(Math.random() * PRIZES.length)];
+                const img = document.createElement('img');
+                img.src = p.icon;
+                $wheelTrack.appendChild(img);
+            }
         }
 
-        spinning = false;
-        save();
-        render();
-    }, 3600);
-});
+        function spinWheel(prize, duration = 3500) {
+            const wheelWidth = document.getElementById('wheel').offsetWidth;
+            const centerOffset = wheelWidth / 2 - ITEM_WIDTH / 2;
 
-        // ==== ЧИТ-КНОПКА (для теста) ====
+            const trackLength = 80;
+            buildTrack(trackLength);
+
+            const winnerIndex = trackLength - 10;
+            const winnerImg = $wheelTrack.children[winnerIndex];
+            winnerImg.src = prize.icon;
+
+            $wheelTrack.classList.remove('idle');
+            $wheelTrack.style.transition = 'none';
+            $wheelTrack.style.transform = 'translateX(0px)';
+            void $wheelTrack.offsetWidth;
+
+            const targetX = -(winnerIndex * ITEM_WIDTH) + centerOffset;
+            const jitter = (Math.random() - 0.5) * 80;
+            const finalX = targetX + jitter;
+
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    $wheelTrack.style.transition = `transform ${duration}ms cubic-bezier(0.15, 0.85, 0.25, 1)`;
+                    $wheelTrack.style.transform = `translateX(${finalX}px)`;
+                });
+            });
+        }
+
+        $spinBtn.addEventListener('click', () => {
+            if (spinning || balance < 1) return;
+            spinning = true;
+            balance -= 1;
+            render();
+
+            const prize = pickPrize();
+            spinWheel(prize, 3500);
+
+            setTimeout(() => {
+                if (prize.stars > 0) {
+                    balance += prize.stars;
+                } else if (prize.id !== 'empty') {
+                    inventory.push(prize.id);
+                }
+
+                spinning = false;
+                save();
+                render();
+
+                setTimeout(() => {
+                    buildTrack(60);
+                    $wheelTrack.style.transition = 'none';
+                    $wheelTrack.style.transform = 'translateX(0px)';
+                    void $wheelTrack.offsetWidth;
+                    $wheelTrack.classList.add('idle');
+                }, 1500);
+            }, 3600);
+        });
+
+        // ==== ЧИТ-КНОПКА ====
         document.getElementById('cheat-btn').addEventListener('click', () => {
             balance += 100;
             save();
             render();
         });
 
-        // ==== СБРОС ПРОГРЕССА ====
+        // ==== СБРОС ====
         document.getElementById('reset-btn').addEventListener('click', () => {
             tg.CloudStorage.removeItem('balance');
             tg.CloudStorage.removeItem('inventory');
@@ -260,11 +273,12 @@ $spinBtn.addEventListener('click', () => {
 
         // ==== СТАРТ ====
         load(() => {
-            // Если игра запущена впервые (пусто) — даём 10 звёзд
             if (balance === 0 && inventory.length === 0) {
                 balance = 10;
                 save();
             }
+            buildTrack(60);
+            $wheelTrack.classList.add('idle');
             render();
         });
     </script>
