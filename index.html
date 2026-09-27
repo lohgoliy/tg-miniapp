@@ -14,16 +14,31 @@
             padding: 16px;
             text-align: center;
             min-height: 100vh;
+            padding-bottom: 80px; /* под нижние табы */
         }
         h1 { font-size: 22px; margin-bottom: 12px; color: #ffcc00; }
-        .balance {
-            font-size: 20px;
-            background: #2a2a2a;
-            padding: 12px;
-            border-radius: 10px;
+
+        /* ==== БАЛАНСЫ ==== */
+        .balances {
+            display: flex;
+            gap: 8px;
             margin-bottom: 12px;
         }
+        .balance {
+            flex: 1;
+            font-size: 16px;
+            background: #2a2a2a;
+            padding: 10px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
         .balance b { color: #ffcc00; }
+        .balance img { width: 22px; height: 22px; object-fit: contain; }
+
+        /* ==== РУЛЕТКА ==== */
         #wheel {
             position: relative;
             height: 140px;
@@ -66,6 +81,8 @@
             box-shadow: 0 0 12px #ffcc00;
             z-index: 2;
         }
+
+        /* ==== КНОПКИ ==== */
         button {
             padding: 14px 28px;
             font-size: 16px;
@@ -82,7 +99,10 @@
         button:active:not(:disabled) { background: #e0b400; }
         .cheat-btn { background: #ff4444; color: white; }
         .reset-btn { background: #444; color: white; }
+
         h2 { font-size: 16px; margin: 16px 0 8px; color: #aaa; text-align: left; }
+
+        /* ==== ИНВЕНТАРЬ ==== */
         #inventory {
             background: #2a2a2a;
             border-radius: 10px;
@@ -93,6 +113,60 @@
         }
         #inventory div { padding: 6px; border-bottom: 1px solid #3a3a3a; }
         #inventory div:last-child { border-bottom: none; }
+
+        /* ==== ВКЛАДКИ (КОНТЕНТ) ==== */
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+
+        /* ==== НИЖНИЕ ТАБЫ ==== */
+        #tabs {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #222;
+            display: flex;
+            border-top: 1px solid #3a3a3a;
+            z-index: 50;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 14px 8px;
+            background: transparent;
+            color: #888;
+            border: none;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 0;
+            margin: 0;
+            transition: color 0.2s, background 0.2s;
+        }
+        .tab-btn.active {
+            color: #ffcc00;
+            background: #2a2a2a;
+        }
+        .tab-btn:hover:not(.active) {
+            color: #ccc;
+        }
+
+        /* ==== ЗАГЛУШКА МАГАЗИНА ==== */
+        .stub {
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 40px 20px;
+            color: #888;
+            font-size: 16px;
+            text-align: center;
+        }
+        .stub .big {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
 
         /* ==== ОКНО ВЫИГРЫША ==== */
         #win-modal {
@@ -182,20 +256,51 @@
 <body>
     <h1>💊 Cartel Idle</h1>
 
-    <div class="balance">Баланс: <b id="balance">0</b> ⭐</div>
-
-    <div id="wheel">
-        <div id="wheel-track"></div>
-        <div id="wheel-pointer"></div>
+    <!-- ==== БАЛАНСЫ ==== -->
+    <div class="balances">
+        <div class="balance">
+            <img src="img/money.png" alt="баксы">
+            <b id="balance">0</b>
+        </div>
+        <div class="balance">
+            <img src="img/cabbage.png" alt="капуста">
+            <b id="cabbage">0</b>
+        </div>
     </div>
 
-    <button id="spin-btn">Крутить (1 ⭐)</button>
-    <button id="cheat-btn" class="cheat-btn">+100 💵 (чит)</button>
-    <button id="reset-btn" class="reset-btn">🗑 Сбросить прогресс</button>
+    <!-- ==== ВКЛАДКА: РУЛЕТКА ==== -->
+    <div class="tab-content active" id="tab-wheel">
+        <div id="wheel">
+            <div id="wheel-track"></div>
+            <div id="wheel-pointer"></div>
+        </div>
+        <button id="spin-btn">Крутить (1 💵)</button>
+        <button id="cheat-btn" class="cheat-btn">+100 💵 (чит)</button>
+        <button id="reset-btn" class="reset-btn">🗑 Сбросить прогресс</button>
+    </div>
 
-    <h2>🎒 Инвентарь</h2>
-    <div id="inventory"><div>Пусто</div></div>
+    <!-- ==== ВКЛАДКА: МАГАЗИН ==== -->
+    <div class="tab-content" id="tab-shop">
+        <div class="stub">
+            <div class="big">🛒</div>
+            <div>Скоро здесь будет оружие и броня картеля</div>
+        </div>
+    </div>
 
+    <!-- ==== ВКЛАДКА: ИНВЕНТАРЬ ==== -->
+    <div class="tab-content" id="tab-inventory">
+        <h2>🎒 Инвентарь</h2>
+        <div id="inventory"><div>Пусто</div></div>
+    </div>
+
+    <!-- ==== НИЖНИЕ ТАБЫ ==== -->
+    <div id="tabs">
+        <button class="tab-btn active" data-tab="wheel">🎰 Рулетка</button>
+        <button class="tab-btn" data-tab="shop">🛒 Магазин</button>
+        <button class="tab-btn" data-tab="inventory">🎒 Инвентарь</button>
+    </div>
+
+    <!-- ==== ОКНО ВЫИГРЫША ==== -->
     <div id="win-modal">
         <div id="win-box">
             <img id="win-img" src="" alt="">
@@ -211,19 +316,28 @@
         tg.expand();
 
         // ==== ПРИЗЫ ====
+        // dollars — сколько баксов даёт
+        // cabbage — сколько капусты даёт
+        // weight  — шанс выпадения (чем больше, тем чаще)
+        // effect  — 'sparkle' для блёсток, null для «Пусто»
         const PRIZES = [
-            { id: 'empty', icon: 'img/empty.png', name: 'Пусто',    stars: 0, weight: 50, effect: null },
-            { id: 'car',   icon: 'img/car1.png',  name: 'Машина',   stars: 0, weight: 30, effect: 'sparkle' },
-            { id: 'money', icon: 'img/money.png', name: '5 баксов', stars: 5, weight: 12, effect: 'sparkle' },
+            { id: 'empty',   icon: 'img/empty.png',   name: 'Пусто',    dollars: 0, cabbage: 0, weight: 50, effect: null },
+            { id: 'car',     icon: 'img/car2.png',    name: 'Машина',   dollars: 0, cabbage: 0, weight: 30, effect: 'sparkle' },
+            { id: 'money',   icon: 'img/money.png',   name: '5 баксов', dollars: 5, cabbage: 0, weight: 12, effect: 'sparkle' },
+            { id: 'cabbage', icon: 'img/cabbage.png', name: 'Капуста',  dollars: 0, cabbage: 1, weight: 10, effect: 'sparkle' },
+            { id: 'ak47',    icon: 'img/gunAK47.png', name: 'AK-47',    dollars: 0, cabbage: 0, weight: 5,  effect: 'sparkle' },
         ];
 
-        let balance = 0;
-        let inventory = [];
+        // ==== СОСТОЯНИЕ ====
+        let balance = 0;      // баксы
+        let cabbage = 0;      // капуста
+        let inventory = [];   // предметы
         let spinning = false;
-        let idleMode = true; // true = лента крутится сама, false = управляем вручную
+        let idleMode = true;
 
         // ==== ЭЛЕМЕНТЫ ====
         const $balance    = document.getElementById('balance');
+        const $cabbage    = document.getElementById('cabbage');
         const $spinBtn    = document.getElementById('spin-btn');
         const $inventory  = document.getElementById('inventory');
         const $wheelTrack = document.getElementById('wheel-track');
@@ -237,17 +351,21 @@
         // ==== СОХРАНЕНИЕ ====
         function save() {
             tg.CloudStorage.setItem('balance', String(balance));
+            tg.CloudStorage.setItem('cabbage', String(cabbage));
             tg.CloudStorage.setItem('inventory', JSON.stringify(inventory));
         }
 
         function load(callback) {
             tg.CloudStorage.getItem('balance', (err, val) => {
                 if (!err && val) balance = parseInt(val, 10) || 0;
-                tg.CloudStorage.getItem('inventory', (err2, val2) => {
-                    if (!err2 && val2) {
-                        try { inventory = JSON.parse(val2); } catch(e) { inventory = []; }
-                    }
-                    if (callback) callback();
+                tg.CloudStorage.getItem('cabbage', (err2, val2) => {
+                    if (!err2 && val2) cabbage = parseInt(val2, 10) || 0;
+                    tg.CloudStorage.getItem('inventory', (err3, val3) => {
+                        if (!err3 && val3) {
+                            try { inventory = JSON.parse(val3); } catch(e) { inventory = []; }
+                        }
+                        if (callback) callback();
+                    });
                 });
             });
         }
@@ -255,6 +373,7 @@
         // ==== ОТРИСОВКА ====
         function render() {
             $balance.innerText = balance;
+            $cabbage.innerText = cabbage;
             $spinBtn.disabled = spinning || balance < 1;
 
             if (inventory.length === 0) {
@@ -294,16 +413,13 @@
             }
         }
 
-        // Запустить idle-прокрутку (используется только при заходе)
         function startIdle() {
             idleMode = true;
             $wheelTrack.classList.add('idle');
         }
 
-        // Остановить idle и перейти в ручной режим, сохранив текущую позицию
         function stopIdle() {
             if (!idleMode) return;
-            // Запоминаем текущую позицию из анимации
             const style = window.getComputedStyle($wheelTrack);
             const matrix = new DOMMatrixReadOnly(style.transform);
             const currentX = matrix.m41;
@@ -317,14 +433,11 @@
         }
 
         function spinWheel(prize, duration = 3500) {
-            // Останавливаем idle, чтобы получить контроль над transform
             stopIdle();
 
             const wheelWidth = document.getElementById('wheel').offsetWidth;
             const centerOffset = wheelWidth / 2 - ITEM_WIDTH / 2;
 
-            // Определяем, куда ехать. Считаем от текущей позиции.
-            // Просто строим длинную ленту и едем к winnerIndex.
             const trackLength = 80;
             buildTrack(trackLength);
 
@@ -332,7 +445,6 @@
             const winnerImg = $wheelTrack.children[winnerIndex];
             winnerImg.src = prize.icon;
 
-            // Сбрасываем в 0 (ручной режим, transition уже выключен)
             $wheelTrack.style.transition = 'none';
             $wheelTrack.style.transform = 'translateX(0px)';
             void $wheelTrack.offsetWidth;
@@ -351,29 +463,28 @@
 
         // ==== ОКНО ВЫИГРЫША ====
         function showWinModal(prize) {
-    $winImg.src = prize.icon;
+            $winImg.src = prize.icon;
 
-    if (prize.id === 'empty') {
-        // Случай «Пусто»
-        $winTitle.innerText = 'Пусто';
-        $winSub.innerText = 'В этот раз не повезло';
-    } else if (prize.stars > 0) {
-        // Деньги
-        $winTitle.innerText = `+${prize.stars} баксов`;
-        $winSub.innerText = 'Наличка капнула в карман';
-    } else {
-        // Предмет в инвентарь
-        $winTitle.innerText = prize.name + ' в инвентаре!';
-        $winSub.innerText = 'Забрал — молодец';
-    }
+            if (prize.id === 'empty') {
+                $winTitle.innerText = 'Пусто';
+                $winSub.innerText = 'В этот раз не повезло';
+            } else if (prize.cabbage > 0) {
+                $winTitle.innerText = `+${prize.cabbage} капуста`;
+                $winSub.innerText = 'Закинул в карман';
+            } else if (prize.dollars > 0) {
+                $winTitle.innerText = `+${prize.dollars} баксов`;
+                $winSub.innerText = 'Наличка капнула в карман';
+            } else {
+                $winTitle.innerText = prize.name + ' в инвентаре!';
+                $winSub.innerText = 'Забрал — молодец';
+            }
 
-    $winModal.classList.add('show');
+            $winModal.classList.add('show');
 
-    // Блёстки только если effect: 'sparkle'
-    if (prize.effect === 'sparkle') {
-        spawnSparkles($winBox, 18);
-    }
-}
+            if (prize.effect === 'sparkle') {
+                spawnSparkles($winBox, 18);
+            }
+        }
 
         function hideWinModal() {
             $winModal.classList.remove('show');
@@ -409,35 +520,54 @@
             if (e.target === $winModal) hideWinModal();
         });
 
+        // ==== ВКЛАДКИ ====
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tabName = btn.dataset.tab;
+
+                // Все кнопки табов — снять active
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                // Все контенты — скрыть
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                document.getElementById('tab-' + tabName).classList.add('active');
+            });
+        });
+
         // ==== КНОПКА КРУТКИ ====
         $spinBtn.addEventListener('click', () => {
-    if (spinning || balance < 1) return;
-    spinning = true;
-    balance -= 1;
-    render();
+            if (spinning || balance < 1) return;
+            spinning = true;
+            balance -= 1;
+            render();
 
-    const prize = pickPrize();
-    spinWheel(prize, 3500);
+            const prize = pickPrize();
+            spinWheel(prize, 3500);
 
-    setTimeout(() => {
-        if (prize.stars > 0) {
-            balance += prize.stars;
-        } else if (prize.id !== 'empty') {
-            inventory.push(prize.id);
-        }
+            setTimeout(() => {
+                if (prize.dollars > 0) {
+                    balance += prize.dollars;
+                }
+                if (prize.cabbage > 0) {
+                    cabbage += prize.cabbage;
+                }
+                if (prize.dollars === 0 && prize.cabbage === 0 && prize.id !== 'empty') {
+                    inventory.push(prize.id);
+                }
 
-        spinning = false;
-        save();
-        render();
+                spinning = false;
+                save();
+                render();
 
-        // Показываем окно для всех призов, включая «Пусто»
-        showWinModal(prize);
-    }, 3600);
-});
+                showWinModal(prize);
+            }, 3600);
+        });
 
         // ==== ЧИТ-КНОПКА ====
         document.getElementById('cheat-btn').addEventListener('click', () => {
             balance += 100;
+            cabbage += 5;
             save();
             render();
         });
@@ -445,8 +575,10 @@
         // ==== СБРОС ====
         document.getElementById('reset-btn').addEventListener('click', () => {
             tg.CloudStorage.removeItem('balance');
+            tg.CloudStorage.removeItem('cabbage');
             tg.CloudStorage.removeItem('inventory');
             balance = 0;
+            cabbage = 0;
             inventory = [];
             save();
             render();
@@ -455,7 +587,7 @@
 
         // ==== СТАРТ ====
         load(() => {
-            if (balance === 0 && inventory.length === 0) {
+            if (balance === 0 && cabbage === 0 && inventory.length === 0) {
                 balance = 10;
                 save();
             }
