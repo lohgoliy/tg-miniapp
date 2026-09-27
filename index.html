@@ -103,15 +103,15 @@
             align-items: center;
             justify-content: center;
             z-index: 100;
+        }
+        #win-modal.show {
+            display: flex;
             animation: fadeIn 0.3s ease-out;
         }
-        #win-modal.show { display: flex; }
-
         @keyframes fadeIn {
             from { opacity: 0; }
             to   { opacity: 1; }
         }
-
         #win-box {
             position: relative;
             background: #2a2a2a;
@@ -123,12 +123,10 @@
             box-shadow: 0 0 40px rgba(255, 204, 0, 0.5);
             animation: popIn 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);
         }
-
         @keyframes popIn {
             0%   { transform: scale(0.5); opacity: 0; }
             100% { transform: scale(1);   opacity: 1; }
         }
-
         #win-box img {
             width: 100px;
             height: 100px;
@@ -136,26 +134,22 @@
             margin-bottom: 16px;
             animation: bounce 0.6s ease-out;
         }
-
         @keyframes bounce {
             0%   { transform: scale(0.3); }
             60%  { transform: scale(1.2); }
             100% { transform: scale(1); }
         }
-
         #win-title {
             font-size: 22px;
             color: #ffcc00;
             font-weight: bold;
             margin-bottom: 8px;
         }
-
         #win-sub {
             font-size: 15px;
             color: #ccc;
             margin-bottom: 20px;
         }
-
         #win-close {
             background: #ffcc00;
             color: #1a1a1a;
@@ -179,16 +173,9 @@
             box-shadow: 0 0 8px #ffcc00;
             animation: sparkleFly 1.2s ease-out forwards;
         }
-
         @keyframes sparkleFly {
-            0% {
-                transform: translate(0, 0) scale(1);
-                opacity: 1;
-            }
-            100% {
-                transform: translate(var(--dx), var(--dy)) scale(0);
-                opacity: 0;
-            }
+            0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+            100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
         }
     </style>
 </head>
@@ -209,7 +196,6 @@
     <h2>🎒 Инвентарь</h2>
     <div id="inventory"><div>Пусто</div></div>
 
-    <!-- ОКНО ВЫИГРЫША -->
     <div id="win-modal">
         <div id="win-box">
             <img id="win-img" src="" alt="">
@@ -225,7 +211,6 @@
         tg.expand();
 
         // ==== ПРИЗЫ ====
-        // effect: 'sparkle' — с блёстками, null — без эффектов (пусто)
         const PRIZES = [
             { id: 'empty', icon: 'img/empty.png', name: 'Пусто',    stars: 0, weight: 50, effect: null },
             { id: 'car',   icon: 'img/car1.png',  name: 'Машина',   stars: 0, weight: 30, effect: 'sparkle' },
@@ -235,6 +220,7 @@
         let balance = 0;
         let inventory = [];
         let spinning = false;
+        let idleMode = true; // true = лента крутится сама, false = управляем вручную
 
         // ==== ЭЛЕМЕНТЫ ====
         const $balance    = document.getElementById('balance');
@@ -308,10 +294,37 @@
             }
         }
 
+        // Запустить idle-прокрутку (используется только при заходе)
+        function startIdle() {
+            idleMode = true;
+            $wheelTrack.classList.add('idle');
+        }
+
+        // Остановить idle и перейти в ручной режим, сохранив текущую позицию
+        function stopIdle() {
+            if (!idleMode) return;
+            // Запоминаем текущую позицию из анимации
+            const style = window.getComputedStyle($wheelTrack);
+            const matrix = new DOMMatrixReadOnly(style.transform);
+            const currentX = matrix.m41;
+
+            $wheelTrack.classList.remove('idle');
+            $wheelTrack.style.transition = 'none';
+            $wheelTrack.style.transform = `translateX(${currentX}px)`;
+            void $wheelTrack.offsetWidth;
+
+            idleMode = false;
+        }
+
         function spinWheel(prize, duration = 3500) {
+            // Останавливаем idle, чтобы получить контроль над transform
+            stopIdle();
+
             const wheelWidth = document.getElementById('wheel').offsetWidth;
             const centerOffset = wheelWidth / 2 - ITEM_WIDTH / 2;
 
+            // Определяем, куда ехать. Считаем от текущей позиции.
+            // Просто строим длинную ленту и едем к winnerIndex.
             const trackLength = 80;
             buildTrack(trackLength);
 
@@ -319,7 +332,7 @@
             const winnerImg = $wheelTrack.children[winnerIndex];
             winnerImg.src = prize.icon;
 
-            $wheelTrack.classList.remove('idle');
+            // Сбрасываем в 0 (ручной режим, transition уже выключен)
             $wheelTrack.style.transition = 'none';
             $wheelTrack.style.transform = 'translateX(0px)';
             void $wheelTrack.offsetWidth;
@@ -348,7 +361,6 @@
 
             $winModal.classList.add('show');
 
-            // Блёстки только если effect: 'sparkle'
             if (prize.effect === 'sparkle') {
                 spawnSparkles($winBox, 18);
             }
@@ -356,13 +368,6 @@
 
         function hideWinModal() {
             $winModal.classList.remove('show');
-            // После закрытия окна снова включаем idle-прокрутку
-            setTimeout(() => {
-                $wheelTrack.style.transition = 'none';
-                $wheelTrack.style.transform = 'translateX(0px)';
-                void $wheelTrack.offsetWidth;
-                $wheelTrack.classList.add('idle');
-            }, 100);
         }
 
         function spawnSparkles(parent, count) {
@@ -390,7 +395,6 @@
             }
         }
 
-        // Закрытие окна по кнопке и по фону
         $winClose.addEventListener('click', hideWinModal);
         $winModal.addEventListener('click', (e) => {
             if (e.target === $winModal) hideWinModal();
@@ -417,19 +421,11 @@
                 save();
                 render();
 
-                // Пусто — без окна, просто возвращаем idle
-                if (prize.id === 'empty') {
-                    setTimeout(() => {
-                        buildTrack(60);
-                        $wheelTrack.style.transition = 'none';
-                        $wheelTrack.style.transform = 'translateX(0px)';
-                        void $wheelTrack.offsetWidth;
-                        $wheelTrack.classList.add('idle');
-                    }, 800);
-                } else {
-                    // Есть приз — показываем окно
+                // Показываем окно для всех, кроме «Пусто»
+                if (prize.id !== 'empty') {
                     showWinModal(prize);
                 }
+                // Для «Пусто» — просто ничего, лента стоит на месте
             }, 3600);
         });
 
@@ -458,7 +454,7 @@
                 save();
             }
             buildTrack(60);
-            $wheelTrack.classList.add('idle');
+            startIdle();
             render();
         });
     </script>
