@@ -93,6 +93,103 @@
         }
         #inventory div { padding: 6px; border-bottom: 1px solid #3a3a3a; }
         #inventory div:last-child { border-bottom: none; }
+
+        /* ==== ОКНО ВЫИГРЫША ==== */
+        #win-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.75);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            animation: fadeIn 0.3s ease-out;
+        }
+        #win-modal.show { display: flex; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+
+        #win-box {
+            position: relative;
+            background: #2a2a2a;
+            border: 2px solid #ffcc00;
+            border-radius: 16px;
+            padding: 32px 24px;
+            max-width: 280px;
+            width: 90%;
+            box-shadow: 0 0 40px rgba(255, 204, 0, 0.5);
+            animation: popIn 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+        }
+
+        @keyframes popIn {
+            0%   { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1);   opacity: 1; }
+        }
+
+        #win-box img {
+            width: 100px;
+            height: 100px;
+            object-fit: contain;
+            margin-bottom: 16px;
+            animation: bounce 0.6s ease-out;
+        }
+
+        @keyframes bounce {
+            0%   { transform: scale(0.3); }
+            60%  { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        #win-title {
+            font-size: 22px;
+            color: #ffcc00;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        #win-sub {
+            font-size: 15px;
+            color: #ccc;
+            margin-bottom: 20px;
+        }
+
+        #win-close {
+            background: #ffcc00;
+            color: #1a1a1a;
+            border: none;
+            border-radius: 10px;
+            padding: 12px 24px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        /* Блёстки */
+        .sparkle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #ffcc00;
+            border-radius: 50%;
+            pointer-events: none;
+            box-shadow: 0 0 8px #ffcc00;
+            animation: sparkleFly 1.2s ease-out forwards;
+        }
+
+        @keyframes sparkleFly {
+            0% {
+                transform: translate(0, 0) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(var(--dx), var(--dy)) scale(0);
+                opacity: 0;
+            }
+        }
     </style>
 </head>
 <body>
@@ -106,12 +203,21 @@
     </div>
 
     <button id="spin-btn">Крутить (1 ⭐)</button>
-
     <button id="cheat-btn" class="cheat-btn">+100 💵 (чит)</button>
     <button id="reset-btn" class="reset-btn">🗑 Сбросить прогресс</button>
 
     <h2>🎒 Инвентарь</h2>
     <div id="inventory"><div>Пусто</div></div>
+
+    <!-- ОКНО ВЫИГРЫША -->
+    <div id="win-modal">
+        <div id="win-box">
+            <img id="win-img" src="" alt="">
+            <div id="win-title">Выигрыш!</div>
+            <div id="win-sub"></div>
+            <button id="win-close">Забрать</button>
+        </div>
+    </div>
 
     <script>
         const tg = window.Telegram.WebApp;
@@ -119,10 +225,11 @@
         tg.expand();
 
         // ==== ПРИЗЫ ====
+        // effect: 'sparkle' — с блёстками, null — без эффектов (пусто)
         const PRIZES = [
-            { id: 'empty', icon: 'img/empty.png', name: 'Пусто',    stars: 0, weight: 50 },
-            { id: 'car',   icon: 'img/car1.png',  name: 'Машина',   stars: 0, weight: 30 },
-            { id: 'money', icon: 'img/money.png', name: '5 баксов', stars: 5, weight: 12 },
+            { id: 'empty', icon: 'img/empty.png', name: 'Пусто',    stars: 0, weight: 50, effect: null },
+            { id: 'car',   icon: 'img/car1.png',  name: 'Машина',   stars: 0, weight: 30, effect: 'sparkle' },
+            { id: 'money', icon: 'img/money.png', name: '5 баксов', stars: 5, weight: 12, effect: 'sparkle' },
         ];
 
         let balance = 0;
@@ -130,10 +237,16 @@
         let spinning = false;
 
         // ==== ЭЛЕМЕНТЫ ====
-        const $balance   = document.getElementById('balance');
-        const $spinBtn   = document.getElementById('spin-btn');
-        const $inventory = document.getElementById('inventory');
+        const $balance    = document.getElementById('balance');
+        const $spinBtn    = document.getElementById('spin-btn');
+        const $inventory  = document.getElementById('inventory');
         const $wheelTrack = document.getElementById('wheel-track');
+        const $winModal   = document.getElementById('win-modal');
+        const $winImg     = document.getElementById('win-img');
+        const $winTitle   = document.getElementById('win-title');
+        const $winSub     = document.getElementById('win-sub');
+        const $winClose   = document.getElementById('win-close');
+        const $winBox     = document.getElementById('win-box');
 
         // ==== СОХРАНЕНИЕ ====
         function save() {
@@ -223,6 +336,67 @@
             });
         }
 
+        // ==== ОКНО ВЫИГРЫША ====
+        function showWinModal(prize) {
+            $winImg.src = prize.icon;
+            $winTitle.innerText = prize.stars > 0
+                ? `+${prize.stars} баксов`
+                : prize.name + ' в инвентаре!';
+            $winSub.innerText = prize.stars > 0
+                ? 'Наличка капнула в карман'
+                : 'Забрал — молодец';
+
+            $winModal.classList.add('show');
+
+            // Блёстки только если effect: 'sparkle'
+            if (prize.effect === 'sparkle') {
+                spawnSparkles($winBox, 18);
+            }
+        }
+
+        function hideWinModal() {
+            $winModal.classList.remove('show');
+            // После закрытия окна снова включаем idle-прокрутку
+            setTimeout(() => {
+                $wheelTrack.style.transition = 'none';
+                $wheelTrack.style.transform = 'translateX(0px)';
+                void $wheelTrack.offsetWidth;
+                $wheelTrack.classList.add('idle');
+            }, 100);
+        }
+
+        function spawnSparkles(parent, count) {
+            const rect = parent.getBoundingClientRect();
+            const cx = rect.width / 2;
+            const cy = rect.height / 2;
+
+            for (let i = 0; i < count; i++) {
+                const s = document.createElement('div');
+                s.className = 'sparkle';
+
+                const angle = (Math.PI * 2 * i) / count + Math.random() * 0.5;
+                const distance = 80 + Math.random() * 120;
+                const dx = Math.cos(angle) * distance;
+                const dy = Math.sin(angle) * distance;
+
+                s.style.left = cx + 'px';
+                s.style.top = cy + 'px';
+                s.style.setProperty('--dx', dx + 'px');
+                s.style.setProperty('--dy', dy + 'px');
+                s.style.animationDelay = (Math.random() * 0.3) + 's';
+
+                parent.appendChild(s);
+                setTimeout(() => s.remove(), 1800);
+            }
+        }
+
+        // Закрытие окна по кнопке и по фону
+        $winClose.addEventListener('click', hideWinModal);
+        $winModal.addEventListener('click', (e) => {
+            if (e.target === $winModal) hideWinModal();
+        });
+
+        // ==== КНОПКА КРУТКИ ====
         $spinBtn.addEventListener('click', () => {
             if (spinning || balance < 1) return;
             spinning = true;
@@ -243,13 +417,19 @@
                 save();
                 render();
 
-                setTimeout(() => {
-                    buildTrack(60);
-                    $wheelTrack.style.transition = 'none';
-                    $wheelTrack.style.transform = 'translateX(0px)';
-                    void $wheelTrack.offsetWidth;
-                    $wheelTrack.classList.add('idle');
-                }, 1500);
+                // Пусто — без окна, просто возвращаем idle
+                if (prize.id === 'empty') {
+                    setTimeout(() => {
+                        buildTrack(60);
+                        $wheelTrack.style.transition = 'none';
+                        $wheelTrack.style.transform = 'translateX(0px)';
+                        void $wheelTrack.offsetWidth;
+                        $wheelTrack.classList.add('idle');
+                    }, 800);
+                } else {
+                    // Есть приз — показываем окно
+                    showWinModal(prize);
+                }
             }, 3600);
         });
 
