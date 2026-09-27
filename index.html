@@ -351,20 +351,29 @@
 
         // ==== ОКНО ВЫИГРЫША ====
         function showWinModal(prize) {
-            $winImg.src = prize.icon;
-            $winTitle.innerText = prize.stars > 0
-                ? `+${prize.stars} баксов`
-                : prize.name + ' в инвентаре!';
-            $winSub.innerText = prize.stars > 0
-                ? 'Наличка капнула в карман'
-                : 'Забрал — молодец';
+    $winImg.src = prize.icon;
 
-            $winModal.classList.add('show');
+    if (prize.id === 'empty') {
+        // Случай «Пусто»
+        $winTitle.innerText = 'Пусто';
+        $winSub.innerText = 'В этот раз не повезло';
+    } else if (prize.stars > 0) {
+        // Деньги
+        $winTitle.innerText = `+${prize.stars} баксов`;
+        $winSub.innerText = 'Наличка капнула в карман';
+    } else {
+        // Предмет в инвентарь
+        $winTitle.innerText = prize.name + ' в инвентаре!';
+        $winSub.innerText = 'Забрал — молодец';
+    }
 
-            if (prize.effect === 'sparkle') {
-                spawnSparkles($winBox, 18);
-            }
-        }
+    $winModal.classList.add('show');
+
+    // Блёстки только если effect: 'sparkle'
+    if (prize.effect === 'sparkle') {
+        spawnSparkles($winBox, 18);
+    }
+}
 
         function hideWinModal() {
             $winModal.classList.remove('show');
@@ -402,32 +411,29 @@
 
         // ==== КНОПКА КРУТКИ ====
         $spinBtn.addEventListener('click', () => {
-            if (spinning || balance < 1) return;
-            spinning = true;
-            balance -= 1;
-            render();
+    if (spinning || balance < 1) return;
+    spinning = true;
+    balance -= 1;
+    render();
 
-            const prize = pickPrize();
-            spinWheel(prize, 3500);
+    const prize = pickPrize();
+    spinWheel(prize, 3500);
 
-            setTimeout(() => {
-                if (prize.stars > 0) {
-                    balance += prize.stars;
-                } else if (prize.id !== 'empty') {
-                    inventory.push(prize.id);
-                }
+    setTimeout(() => {
+        if (prize.stars > 0) {
+            balance += prize.stars;
+        } else if (prize.id !== 'empty') {
+            inventory.push(prize.id);
+        }
 
-                spinning = false;
-                save();
-                render();
+        spinning = false;
+        save();
+        render();
 
-                // Показываем окно для всех, кроме «Пусто»
-                if (prize.id !== 'empty') {
-                    showWinModal(prize);
-                }
-                // Для «Пусто» — просто ничего, лента стоит на месте
-            }, 3600);
-        });
+        // Показываем окно для всех призов, включая «Пусто»
+        showWinModal(prize);
+    }, 3600);
+});
 
         // ==== ЧИТ-КНОПКА ====
         document.getElementById('cheat-btn').addEventListener('click', () => {
