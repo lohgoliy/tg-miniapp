@@ -24,40 +24,44 @@
             margin-bottom: 12px;
         }
         .balance b { color: #ffcc00; }
-        #slot {
-            font-size: 80px;
-            height: 140px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #2a2a2a;
-            border-radius: 12px;
-            margin-bottom: 12px;
-            user-select: none;
-        }
-        #slot.spin { animation: shake 0.1s infinite; }
-        @keyframes shake {
-            0% { transform: translateY(-5px); }
-            50% { transform: translateY(5px); }
-            100% { transform: translateY(-5px); }
-        }
-        button {
-            padding: 14px 28px;
-            font-size: 16px;
-            background: #ffcc00;
-            color: #1a1a1a;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            font-weight: bold;
-            width: 100%;
-            margin-bottom: 8px;
-        }
-        button:disabled { background: #555; color: #888; cursor: not-allowed; }
-        button:active:not(:disabled) { background: #e0b400; }
-        .cheat-btn { background: #ff4444; color: white; }
-        .reset-btn { background: #444; color: white; }
-        h2 { font-size: 16px; margin: 16px 0 8px; color: #aaa; text-align: left; }
+        #wheel {
+    position: relative;
+    height: 140px;
+    background: #2a2a2a;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    overflow: hidden;
+}
+
+#wheel-track {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    will-change: transform;
+}
+
+#wheel-track img {
+    width: 100px;
+    height: 100px;
+    object-fit: contain;
+    margin: 0 10px;
+    flex-shrink: 0;
+}
+
+#wheel-pointer {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    width: 3px;
+    height: 100%;
+    background: #ffcc00;
+    transform: translateX(-50%);
+    box-shadow: 0 0 12px #ffcc00;
+    z-index: 2;
+}
         #inventory {
             background: #2a2a2a;
             border-radius: 10px;
@@ -75,7 +79,10 @@
 
     <div class="balance">Баланс: <b id="balance">0</b> ⭐</div>
 
-    <div id="slot">❓</div>
+    <div id="wheel">
+    <div id="wheel-track"></div>
+    <div id="wheel-pointer"></div>
+</div>
 
     <button id="spin-btn">Крутить (1 ⭐)</button>
 
@@ -107,7 +114,6 @@
 
         // ==== ЭЛЕМЕНТЫ ====
         const $balance   = document.getElementById('balance');
-        const $slot      = document.getElementById('slot');
         const $spinBtn   = document.getElementById('spin-btn');
         const $inventory = document.getElementById('inventory');
 
@@ -158,39 +164,81 @@
             return PRIZES[0];
         }
 
-        // ==== КРУТКА ====
-        $spinBtn.addEventListener('click', () => {
-            if (spinning || balance < 1) return;
-            spinning = true;
-            balance -= 1;
-            render();
+        // ==== КРУТКА (рулетка) ====
+const $wheelTrack = document.getElementById('wheel-track');
 
-            $slot.classList.add('spin');
+// Ширина одной ячейки: картинка 100px + отступы по 10px с двух сторон = 120px
+const ITEM_WIDTH = 120;
+const ITEM_GAP = 10; // margin между картинками (0 10px)
 
-            // 1.5 секунды быстро мелькают картинки
-            const shuffleInterval = setInterval(() => {
-                const p = PRIZES[Math.floor(Math.random() * PRIZES.length)];
-                $slot.innerHTML = `<img src="${p.icon}" width="80">`;
-            }, 80);
+// Строим длинную ленту из случайных призов
+function buildTrack(count) {
+    $wheelTrack.innerHTML = '';
+    for (let i = 0; i < count; i++) {
+        const p = PRIZES[Math.floor(Math.random() * PRIZES.length)];
+        const img = document.createElement('img');
+        img.src = p.icon;
+        $wheelTrack.appendChild(img);
+    }
+}
 
-            setTimeout(() => {
-                clearInterval(shuffleInterval);
-                $slot.classList.remove('spin');
+// Крутим рулетку и останавливаемся на призе
+function spinWheel(prize, duration = 3500) {
+    const wheelWidth = document.getElementById('wheel').offsetWidth;
+    const centerOffset = wheelWidth / 2 - ITEM_WIDTH / 2;
 
-                const prize = pickPrize();
-                $slot.innerHTML = `<img src="${prize.icon}" width="100">`;
+    // Сначала мелькает много призов (создаём ленту)
+    const trackLength = 40;
+    buildTrack(trackLength);
 
-                if (prize.stars > 0) {
-                    balance += prize.stars;
-                } else if (prize.id !== 'empty') {
-                    inventory.push(prize.id);
-                }
+    // Ставим выигрышный приз в позицию ближе к концу
+    const winnerIndex = trackLength - 5;
+    const winnerImg = $wheelTrack.children[winnerIndex];
+    winnerImg.src = prize.icon;
 
-                spinning = false;
-                save();
-                render();
-            }, 1500);
+    // Начальная позиция — левый край ленты
+    let startX = 0;
+    $wheelTrack.style.transition = 'none';
+    $wheelTrack.style.transform = `translateX(${startX}px)`;
+
+    // Куда надо приехать, чтобы выигрышный приз оказался в центре
+    const targetX = -(winnerIndex * (ITEM_WIDTH + ITEM_GAP * 2)) + centerOffset;
+
+    // Небольшое случайное смещение, чтобы не всегда точно в центр
+    const jitter = (Math.random() - 0.5) * 40;
+    const finalX = targetX + jitter;
+
+    // Принудительно применить начальную позицию перед анимацией
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            $wheelTrack.style.transition = `transform ${duration}ms cubic-bezier(0.15, 0.85, 0.25, 1)`;
+            $wheelTrack.style.transform = `translateX(${finalX}px)`;
         });
+    });
+}
+
+$spinBtn.addEventListener('click', () => {
+    if (spinning || balance < 1) return;
+    spinning = true;
+    balance -= 1;
+    render();
+
+    const prize = pickPrize();
+
+    spinWheel(prize, 3500);
+
+    setTimeout(() => {
+        if (prize.stars > 0) {
+            balance += prize.stars;
+        } else if (prize.id !== 'empty') {
+            inventory.push(prize.id);
+        }
+
+        spinning = false;
+        save();
+        render();
+    }, 3600);
+});
 
         // ==== ЧИТ-КНОПКА (для теста) ====
         document.getElementById('cheat-btn').addEventListener('click', () => {
