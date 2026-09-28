@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cartel Idle</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: #eee;
+            padding: 16px;
+            text-align: center;
+            min-height: 100vh;
+            padding-bottom: 80px;
+        }
+        h1 { font-size: 22px; margin-bottom: 12px; color: #ffcc00; }
+
+        /* ==== БАЛАНСЫ ==== */
+        .balances {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .balance {
+            flex: 1;
+            font-size: 16px;
+            background: #2a2a2a;
+            padding: 10px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .balance b { color: #ffcc00; }
+        .balance img { width: 22px; height: 22px; object-fit: contain; }
+
+        /* ==== РУЛЕТКА ==== */
+        #wheel {
+            position: relative;
+            height: 140px;
+            background: #2a2a2a;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            overflow: hidden;
+        }
+        #wheel-track {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            will-change: transform;
+        }
+        #wheel-track.idle {
+            animation: idleScroll 40s linear infinite;
+        }
+        @keyframes idleScroll {
+            from { transform: translateX(0); }
+            to   { transform: translateX(-3600px); }
+        }
+        #wheel-track img {
+            width: 100px;
+            height: 100px;
+            object-fit: contain;
+            margin: 0 10px;
+            flex-shrink: 0;
+        }
+        #wheel-pointer {
+            position: absolute;
+            left: 50%;
+            top: 0;
+            width: 3px;
+            height: 100%;
+            background: #ffcc00;
+            transform: translateX(-50%);
+            box-shadow: 0 0 12px #ffcc00;
+            z-index: 2;
+        }
+
+        /* ==== КНОПКИ ==== */
+        button {
+            padding: 14px 28px;
+            font-size: 16px;
+            background: #ffcc00;
+            color: #1a1a1a;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+            margin-bottom: 8px;
+        }
+        button:disabled { background: #555; color: #888; cursor: not-allowed; }
+        button:active:not(:disabled) { background: #e0b400; }
+        .cheat-btn { background: #ff4444; color: white; }
+        .reset-btn { background: #444; color: white; }
+
+        h2 { font-size: 16px; margin: 16px 0 8px; color: #aaa; text-align: left; }
+
+        /* ==== ИНВЕНТАРЬ ==== */
+        #inventory {
+            background: #2a2a2a;
+            border-radius: 10px;
+            padding: 8px;
+            min-height: 60px;
+            text-align: left;
+            font-size: 15px;
+        }
+        #inventory div { padding: 6px; border-bottom: 1px solid #3a3a3a; }
+        #inventory div:last-child { border-bottom: none; }
+
+        /* ==== ВКЛАДКИ (КОНТЕНТ) ==== */
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* ==== НИЖНИЕ ТАБЫ ==== */
+        #tabs {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #222;
+            display: flex;
+            border-top: 1px solid #3a3a3a;
+            z-index: 50;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 12px 4px;
+            background: transparent;
+            color: #888;
+            border: none;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 0;
+            margin: 0;
+            transition: color 0.2s, background 0.2s;
+        }
+        .tab-btn.active { color: #ffcc00; background: #2a2a2a; }
+        .tab-btn:hover:not(.active) { color: #ccc; }
+
+        /* ==== ЗАГЛУШКА ==== */
+        .stub {
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 40px 20px;
+            color: #888;
+            font-size: 16px;
+            text-align: center;
+        }
+        .stub .big { font-size: 48px; margin-bottom: 16px; }
+		
+        /* ==== ПАНЕЛЬ ИГРОКА ==== */
+        #player-panel {
+            background: #2a2a2a;
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 12px;
+            text-align: left;
+            font-size: 13px;
+        }
+        .pp-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+        .pp-label { color: #888; }
+        .pp-value { color: #ffcc00; font-weight: bold; }
+        /* ==== ЛОББИ ==== */
+        #lobby-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #2a2a2a;
+            padding: 10px 12px;
+            border-radius: 10px;
+            margin-bottom: 12px;
+            font-size: 15px;
+        }
+        #base-name-title {
+            font-weight: bold;
+            color: #ffcc00;
+            text-align: left;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 60%;
+        }
+        #rename-btn {
+            width: auto;
+            padding: 6px 12px;
+            font-size: 13px;
+            margin: 0;
+            background: #444;
+            color: #eee;
+        }
+        #rename-btn:disabled { background: #333; color: #666; }
+
+        #base-scene {
+            position: relative;
+            height: 200px;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 12px;
+            background: linear-gradient(180deg, #1a2a3a 0%, #2a3a4a 60%, #3a4a5a 100%);
+        }
+
+        #base-emoji {
+            position: absolute;
+            left: 50%;
+            bottom: 0;
+            transform: translateX(-50%);
+            font-size: 120px;
+            line-height: 1;
+            filter: drop-shadow(0 0 20px rgba(255, 204, 0, 0.3));
+            z-index: 2;
+        }
+
+        /* Дым */
+        .smoke {
+            position: absolute;
+            bottom: 0;
+            font-size: 30px;
+            opacity: 0.3;
+            animation: smokeFloat 8s ease-in-out infinite;
+        }
+        .smoke:nth-child(1) { left: 20%; animation-delay: 0s; }
+        .smoke:nth-child(2) { left: 70%; animation-delay: 3s; }
+        .smoke:nth-child(3) { left: 45%; animation-delay: 6s; }
+        @keyframes smokeFloat {
+            0%   { transform: translateY(0) scale(1); opacity: 0; }
+            20%  { opacity: 0.4; }
+            100% { transform: translateY(-80px) scale(1.5); opacity: 0; }
+        }
+
+        /* Вывеска */
+        #neon-sign {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 14px;
+            font-weight: bold;
+            color: #ff3366;
+            text-shadow: 0 0 8px #ff3366, 0 0 16px #ff3366;
+            animation: neonFlicker 3s linear infinite;
+            z-index: 3;
+        }
+        @keyframes neonFlicker {
+            0%, 18%, 22%, 25%, 53%, 57%, 100% { opacity: 1; }
+            20%, 24%, 55% { opacity: 0.4; }
+        }
+
+        /* Машина */
+        #passing-car {
+            position: absolute;
+            bottom: 8px;
+            font-size: 28px;
+            left: -50px;
+            animation: carDrive 12s linear infinite;
+            z-index: 4;
+        }
+        @keyframes carDrive {
+            0%   { left: -50px; opacity: 0; }
+            5%   { opacity: 1; }
+            95%  { opacity: 1; }
+            100% { left: 110%; opacity: 0; }
+        }
+
+        /* Силуэт */
+        #passing-guy {
+            position: absolute;
+            bottom: 8px;
+            font-size: 22px;
+            right: -30px;
+            animation: guyWalk 15s linear infinite;
+            animation-delay: 5s;
+            opacity: 0;
+            z-index: 4;
+        }
+        @keyframes guyWalk {
+            0%   { right: -30px; opacity: 0; }
+            10%  { opacity: 0.8; }
+            90%  { opacity: 0.8; }
+            100% { right: 110%; opacity: 0; }
+        }
+
+        /* Мини-панель */
+        #base-info {
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 12px;
+            text-align: left;
+            font-size: 14px;
+        }
+        #base-info .row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        #base-info .row:last-child { margin-bottom: 0; }
+        #base-info .label { color: #888; }
+        #base-info .value { color: #ffcc00; font-weight: bold; }
+
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: #1a1a1a;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 6px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ffcc00, #ffaa00);
+            transition: width 0.4s ease-out;
+        }
+
+        #upgrade-btn {
+            background: #44aa44;
+            color: white;
+            margin-top: 12px;
+        }
+		        #work-btn {
+            background: #44aaff;
+            color: white;
+            margin-top: 8px;
+        }
+        #work-btn:disabled { background: #444; color: #888; }
+        #work-btn:active:not(:disabled) { background: #3388cc; }
+        #upgrade-btn:disabled { background: #444; color: #888; }
+        #upgrade-btn:active:not(:disabled) { background: #338833; }
+
+        /* ==== ОКНА (модалки) ==== */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        .modal.show { display: flex; animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .modal-box {
+            position: relative;
+            background: #2a2a2a;
+            border: 2px solid #ffcc00;
+            border-radius: 16px;
+            padding: 28px 22px;
+            max-width: 320px;
+            width: 90%;
+            box-shadow: 0 0 40px rgba(255, 204, 0, 0.5);
+            animation: popIn 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+        }
+        @keyframes popIn {
+            0%   { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1);   opacity: 1; }
+        }
+
+        .modal-title {
+            font-size: 20px;
+            color: #ffcc00;
+            font-weight: bold;
+            margin-bottom: 12px;
+        }
+        .modal-text {
+            font-size: 15px;
+            color: #ccc;
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+        .modal-text b { color: #ffcc00; }
+        .modal-input {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            background: #1a1a1a;
+            color: #eee;
+            border: 2px solid #444;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        .modal-input:focus {
+            outline: none;
+            border-color: #ffcc00;
+        }
+        .modal-warning {
+            font-size: 12px;
+            color: #ff6666;
+            margin-bottom: 16px;
+        }
+
+        /* ==== ОКНО ВЫИГРЫША (рулетка) ==== */
+        #win-box img {
+            width: 100px;
+            height: 100px;
+            object-fit: contain;
+            margin-bottom: 16px;
+            animation: bounce 0.6s ease-out;
+        }
+        @keyframes bounce {
+            0%   { transform: scale(0.3); }
+            60%  { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        #win-title { font-size: 22px; color: #ffcc00; font-weight: bold; margin-bottom: 8px; }
+        #win-sub { font-size: 15px; color: #ccc; margin-bottom: 20px; }
+
+        /* Блёстки */
+        .sparkle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #ffcc00;
+            border-radius: 50%;
+            pointer-events: none;
+            box-shadow: 0 0 8px #ffcc00;
+            animation: sparkleFly 1.2s ease-out forwards;
+        }
+        @keyframes sparkleFly {
+            0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+            100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <h1>💊 Cartel Idle</h1>
+
+    <!-- ==== БАЛАНСЫ ==== -->
+    <div class="balances">
+        <div class="balance">
+            <img src="img/money.png" alt="баксы">
+            <b id="balance">0</b>
+        </div>
+        <div class="balance">
+            <img src="img/cabbage.png" alt="капуста">
+            <b id="cabbage">0</b>
+        </div>
+    </div>
+
+    <!-- ==== ВКЛАДКА: ЛОББИ ==== -->
+    <div class="tab-content active" id="tab-lobby">
+	        <div id="player-panel">
+            <div class="pp-row">
+                <span class="pp-label">👤 Уровень игрока</span>
+                <span class="pp-value" id="player-level-text">Ур. 1</span>
+            </div>
+            <div class="progress-bar" style="height: 8px;">
+                <div class="progress-fill" id="player-xp-fill" style="width: 0%"></div>
+            </div>
+            <div class="pp-row" style="margin-top: 4px;">
+                <span class="pp-label" id="player-xp-text">0 / 100 XP</span>
+                <span class="pp-value" style="font-size: 12px;">до след. уровня</span>
+            </div>
+        </div>
+        <div id="lobby-header">
+            <div id="base-name-title">🏠 Штаб</div>
+            <button id="rename-btn" disabled>✏️ 20 🥬</button>
+        </div>
+
+        <div id="base-scene">
+            <div id="neon-sign">CARTEL</div>
+            <div class="smoke">💨</div>
+            <div class="smoke">💨</div>
+            <div class="smoke">💨</div>
+            <div id="base-emoji">🏚</div>
+            <div id="passing-car">🚗</div>
+            <div id="passing-guy">🚶</div>
+        </div>
+
+        <div id="base-info">
+            <div class="row">
+                <span class="label">Уровень базы</span>
+                <span class="value" id="base-level-text">1 — Гараж</span>
+            </div>
+            <div class="row">
+                <span class="label">Доход</span>
+                <span class="value" id="income-text">+1 💵 / 5 сек</span>
+            </div>
+            <div class="row">
+                <span class="label">Накоплено</span>
+                <span class="value" id="stored-text">0 / 2880 💵</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+            </div>
+            <div class="row" style="margin-top: 8px;">
+                <span class="label" id="upgrade-req">Следующая: Подвал</span>
+                <span class="value" id="upgrade-cost">5000 💵</span>
+            </div>
+            <button id="upgrade-btn" disabled>⬆️ Улучшить базу</button>
+			            <button id="work-btn">💼 Работать (+5 XP, +5 💵)</button>
+        </div>
+    </div>
+
+    <!-- ==== ВКЛАДКА: РУЛЕТКА ==== -->
+    <div class="tab-content" id="tab-wheel">
+        <div id="wheel">
+            <div id="wheel-track"></div>
+            <div id="wheel-pointer"></div>
+        </div>
+        <button id="spin-btn">Крутить (1 💵)</button>
+        <button id="cheat-btn" class="cheat-btn">+100 💵 (чит)</button>
+        <button id="reset-btn" class="reset-btn">🗑 Сбросить прогресс</button>
+    </div>
+
+    <!-- ==== ВКЛАДКА: МАГАЗИН ==== -->
+    <div class="tab-content" id="tab-shop">
+        <div class="stub">
+            <div class="big">🛒</div>
+            <div>Скоро здесь будет оружие и броня картеля</div>
+        </div>
+    </div>
+
+    <!-- ==== ВКЛАДКА: ИНВЕНТАРЬ ==== -->
+    <div class="tab-content" id="tab-inventory">
+        <h2>🎒 Инвентарь</h2>
+        <div id="inventory"><div>Пусто</div></div>
+    </div>
+
+    <!-- ==== ВКЛАДКА: PVP ==== -->
+    <div class="tab-content" id="tab-pvp">
+        <div class="stub">
+            <div class="big">⚔️</div>
+            <div>Скоро здесь будут бои с другими картелями</div>
+        </div>
+    </div>
+
+    <!-- ==== НИЖНИЕ ТАБЫ ==== -->
+    <div id="tabs">
+        <button class="tab-btn active" data-tab="lobby">🏠 Лобби</button>
+        <button class="tab-btn" data-tab="wheel">🎰 Рулетка</button>
+        <button class="tab-btn" data-tab="shop">🛒 Магазин</button>
+        <button class="tab-btn" data-tab="inventory">🎒 Инвентарь</button>
+        <button class="tab-btn" data-tab="pvp">⚔️ PvP</button>
+    </div>
+
+    <!-- ==== ОКНО ВВОДА ИМЕНИ БАЗЫ ==== -->
+    <div id="name-modal" class="modal">
+        <div class="modal-box">
+            <div class="modal-title">🏠 Назови свою базу</div>
+            <div class="modal-text">
+                Это название будет видеть ты и соперники в PvP. Выбери с умом.
+            </div>
+            <input id="name-input" class="modal-input" type="text" maxlength="25" placeholder="Название базы">
+            <div class="modal-warning">⚠️ Сменить название можно будет только за 20 🥬</div>
+            <button id="name-save">Сохранить</button>
+            <button id="name-skip" class="reset-btn">Пропустить</button>
+        </div>
+    </div>
+
+    <!-- ==== ОКНО IDLE-НАГРАДЫ ==== -->
+    <div id="idle-modal" class="modal">
+        <div class="modal-box">
+            <div class="modal-title">💰 Накопилось!</div>
+            <div class="modal-text">
+                Вас не было <b id="idle-time">0ч 0м</b><br>
+                Ваша награда: <b id="idle-reward">0 💵</b>
+            </div>
+            <button id="idle-close">Забрать</button>
+        </div>
+    </div>
+
+    <!-- ==== ОКНО СМЕНЫ ИМЕНИ ==== -->
+    <div id="rename-modal" class="modal">
+        <div class="modal-box">
+            <div class="modal-title">✏️ Смена названия</div>
+            <div class="modal-text">
+                Стоимость: <b>20 🥬</b><br>
+                У тебя: <b id="rename-cabbage">0 🥬</b>
+            </div>
+            <input id="rename-input" class="modal-input" type="text" maxlength="25" placeholder="Новое название">
+            <button id="rename-save">Сменить за 20 🥬</button>
+            <button id="rename-cancel" class="reset-btn">Отмена</button>
+        </div>
+    </div>
+
+    <!-- ==== ОКНО ВЫИГРЫША (рулетка) ==== -->
+    <div id="win-modal" class="modal">
+        <div class="modal-box" id="win-box">
+            <img id="win-img" src="" alt="">
+            <div id="win-title">Выигрыш!</div>
+            <div id="win-sub"></div>
+            <button id="win-close">Забрать</button>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+
+        // ==== ПРИЗЫ ====
+        const PRIZES = [
+            { id: 'empty',   icon: 'img/empty.png',   name: 'Пусто',    dollars: 0, cabbage: 0, weight: 50, effect: null },
+            { id: 'car',     icon: 'img/car2.png',    name: 'Машина',   dollars: 0, cabbage: 0, weight: 30, effect: 'sparkle' },
+            { id: 'money',   icon: 'img/money.png',   name: '5 баксов', dollars: 5, cabbage: 0, weight: 12, effect: 'sparkle' },
+            { id: 'cabbage', icon: 'img/cabbage.png', name: 'Капуста',  dollars: 0, cabbage: 1, weight: 10, effect: 'sparkle' },
+            { id: 'ak47',    icon: 'img/gunAK47.png', name: 'AK-47',    dollars: 0, cabbage: 0, weight: 5,  effect: 'sparkle' },
+        ];
+
+        // ==== УРОВНИ БАЗЫ ====
+// playerReq — требуемый уровень ИГРОКА для покупки
+const BASES = [
+    { level: 1, name: 'Гараж',    emoji: '🏚', cost: 0,      playerReq: 1  },
+    { level: 2, name: 'Подвал',   emoji: '🏠', cost: 5000,   playerReq: 3  },
+    { level: 3, name: 'Склад',    emoji: '🏭', cost: 25000,  playerReq: 7  },
+    { level: 4, name: 'Квартира', emoji: '🏢', cost: 100000, playerReq: 15 },
+    { level: 5, name: 'Особняк',  emoji: '🏰', cost: 500000, playerReq: 30 },
+];
+
+// ==== УРОВНИ ИГРОКА ====
+const MAX_PLAYER_LEVEL = 50;
+// Сколько XP нужно для перехода с уровня N на N+1
+function xpForLevel(level) {
+    return Math.floor(100 * Math.pow(level, 1.5));
+}
+
+        // ==== IDLE-ДОХОД ====
+        const IDLE_PERIOD_MS = 5000;        // 1 начисление раз в 5 сек
+        const IDLE_REWARD = 1;              // +1 бакс за период
+        const IDLE_MAX_HOURS = 4;           // максимум 4 часа накопления
+        const IDLE_MAX_MS = IDLE_MAX_HOURS * 60 * 60 * 1000;
+
+        // ==== СОСТОЯНИЕ ====
+        let balance = 0;
+        let cabbage = 0;
+        let inventory = [];
+        let spinning = false;
+        let idleMode = true;
+        let baseName = 'Штаб';
+let baseLevel = 1;
+let lastSeen = Date.now(); // когда игрок последний раз был в игре
+let renameCost = 20;       // стоимость смены имени
+
+// ==== ПРОКАЧКА ИГРОКА ====
+let playerLevel = 1;
+let playerXp = 0;          // накопленный XP на текущем уровне
+let workCooldown = 0;      // timestamp, когда можно снова работать       // стоимость смены имени
+
+        // ==== ЭЛЕМЕНТЫ ====
+        const $balance    = document.getElementById('balance');
+        const $cabbage    = document.getElementById('cabbage');
+        const $spinBtn    = document.getElementById('spin-btn');
+        const $inventory  = document.getElementById('inventory');
+        const $wheelTrack = document.getElementById('wheel-track');
+        const $winModal   = document.getElementById('win-modal');
+        const $winImg     = document.getElementById('win-img');
+        const $winTitle   = document.getElementById('win-title');
+        const $winSub     = document.getElementById('win-sub');
+        const $winClose   = document.getElementById('win-close');
+        const $winBox     = document.getElementById('win-box');
+
+        // ==== ЛОББИ ====
+        const $baseNameTitle = document.getElementById('base-name-title');
+        const $baseEmoji     = document.getElementById('base-emoji');
+        const $baseLevelText = document.getElementById('base-level-text');
+        const $incomeText    = document.getElementById('income-text');
+        const $storedText    = document.getElementById('stored-text');
+        const $progressFill  = document.getElementById('progress-fill');
+        const $upgradeReq    = document.getElementById('upgrade-req');
+        const $upgradeCost   = document.getElementById('upgrade-cost');
+        const $upgradeBtn    = document.getElementById('upgrade-btn');
+        const $renameBtn     = document.getElementById('rename-btn');
+
+        // ==== МОДАЛКИ ====
+        const $nameModal    = document.getElementById('name-modal');
+        const $nameInput    = document.getElementById('name-input');
+        const $nameSave     = document.getElementById('name-save');
+        const $nameSkip     = document.getElementById('name-skip');
+        const $idleModal    = document.getElementById('idle-modal');
+        const $idleTime     = document.getElementById('idle-time');
+        const $idleReward   = document.getElementById('idle-reward');
+        const $idleClose    = document.getElementById('idle-close');
+        const $renameModal  = document.getElementById('rename-modal');
+        const $renameInput  = document.getElementById('rename-input');
+        const $renameSave   = document.getElementById('rename-save');
+        const $renameCancel = document.getElementById('rename-cancel');
+        const $renameCabbage= document.getElementById('rename-cabbage');
+
+        // ==== СОХРАНЕНИЕ ====
+        function save() {
+    lastSeen = Date.now();
+    tg.CloudStorage.setItem('balance', String(balance));
+    tg.CloudStorage.setItem('cabbage', String(cabbage));
+    tg.CloudStorage.setItem('inventory', JSON.stringify(inventory));
+    tg.CloudStorage.setItem('baseName', baseName);
+    tg.CloudStorage.setItem('baseLevel', String(baseLevel));
+    tg.CloudStorage.setItem('lastSeen', String(lastSeen));
+    tg.CloudStorage.setItem('playerLevel', String(playerLevel));
+    tg.CloudStorage.setItem('playerXp', String(playerXp));
+    tg.CloudStorage.setItem('workCooldown', String(workCooldown));
+}
+        function load(callback) {
+    tg.CloudStorage.getItem('balance', (err, val) => {
+        if (!err && val) balance = parseInt(val, 10) || 0;
+        tg.CloudStorage.getItem('cabbage', (err2, val2) => {
+            if (!err2 && val2) cabbage = parseInt(val2, 10) || 0;
+            tg.CloudStorage.getItem('inventory', (err3, val3) => {
+                if (!err3 && val3) { try { inventory = JSON.parse(val3); } catch(e) { inventory = []; } }
+                tg.CloudStorage.getItem('baseName', (err4, val4) => {
+                    if (!err4 && val4) baseName = val4;
+                    tg.CloudStorage.getItem('baseLevel', (err5, val5) => {
+                        if (!err5 && val5) baseLevel = parseInt(val5, 10) || 1;
+                        tg.CloudStorage.getItem('lastSeen', (err6, val6) => {
+                            if (!err6 && val6) lastSeen = parseInt(val6, 10) || Date.now();
+                            tg.CloudStorage.getItem('playerLevel', (err7, val7) => {
+                                if (!err7 && val7) playerLevel = parseInt(val7, 10) || 1;
+                                tg.CloudStorage.getItem('playerXp', (err8, val8) => {
+                                    if (!err8 && val8) playerXp = parseInt(val8, 10) || 0;
+                                    tg.CloudStorage.getItem('workCooldown', (err9, val9) => {
+                                        if (!err9 && val9) workCooldown = parseInt(val9, 10) || 0;
+                                        if (callback) callback();
+                                    });
+                                });
+                            });
+                        });
+                    });
+                });
+            });
+        });
+    });
+}
+
+        // ==== ОТРИСОВКА ====
+        function render() {
+            $balance.innerText = balance;
+            $cabbage.innerText = cabbage;
+            $spinBtn.disabled = spinning || balance < 1;
+
+            // Инвентарь
+            if (inventory.length === 0) {
+                $inventory.innerHTML = '<div>Пусто</div>';
+            } else {
+                const counts = {};
+                inventory.forEach(id => counts[id] = (counts[id] || 0) + 1);
+                $inventory.innerHTML = Object.entries(counts).map(([id, n]) => {
+                    const p = PRIZES.find(x => x.id === id);
+                    if (!p) return '';
+                    return `<div><img src="${p.icon}" width="24" style="vertical-align:middle"> ${p.name} ×${n}</div>`;
+                }).join('');
+            }
+
+            // Лобби
+            renderLobby();
+        }
+
+        function renderLobby() {
+            const cur = BASES[baseLevel - 1];
+            const next = BASES[baseLevel] || null;
+
+            $baseNameTitle.innerText = '🏠 ' + baseName;
+            $baseEmoji.innerText = cur.emoji;
+            $baseLevelText.innerText = cur.level + ' — ' + cur.name;
+            $incomeText.innerText = `+${IDLE_REWARD} 💵 / 5 сек`;
+            $storedText.innerText = `${IDLE_MAX_HOURS * 3600 / 5} 💵 макс`;
+            $progressFill.style.width = '100%';
+
+            // Кнопка смены имени
+            $renameBtn.disabled = cabbage < renameCost;
+
+                    // Апгрейд
+        if (next) {
+            $upgradeReq.innerText = `Следующая: ${next.name}`;
+            $upgradeCost.innerText = `${next.cost.toLocaleString('ru')} 💵`;
+
+            const canAfford = balance >= next.cost;
+            const hasLevel = playerLevel >= next.playerReq;
+            $upgradeBtn.disabled = !canAfford || !hasLevel;
+
+            if (!hasLevel) {
+                $upgradeBtn.innerText = `🔒 Нужен ${next.playerReq} уровень игрока`;
+            } else if (!canAfford) {
+                $upgradeBtn.innerText = `⬆️ Нужно ${next.cost.toLocaleString('ru')} 💵`;
+            } else {
+                $upgradeBtn.innerText = `⬆️ Улучшить за ${next.cost.toLocaleString('ru')} 💵`;
+            }
+        } else {
+            $upgradeReq.innerText = '🏆 Максимальный уровень';
+            $upgradeCost.innerText = '';
+            $upgradeBtn.disabled = true;
+            $upgradeBtn.innerText = 'Максимум';
+        }
+
+                // Уровень игрока
+        renderPlayerLevel();
+    }
+
+    // ==== ОТРИСОВКА УРОВНЯ ИГРОКА ====
+    function renderPlayerLevel() {
+        const $plText = document.getElementById('player-level-text');
+        const $plXp   = document.getElementById('player-xp-text');
+        const $plFill = document.getElementById('player-xp-fill');
+        const $workBtn = document.getElementById('work-btn');
+
+        if ($plText) $plText.innerText = `Ур. ${playerLevel}`;
+
+        if (playerLevel >= MAX_PLAYER_LEVEL) {
+            if ($plXp) $plXp.innerText = 'MAX';
+            if ($plFill) $plFill.style.width = '100%';
+        } else {
+            const need = xpForLevel(playerLevel);
+            if ($plXp) $plXp.innerText = `${playerXp} / ${need} XP`;
+            if ($plFill) $plFill.style.width = Math.min(100, (playerXp / need) * 100) + '%';
+        }
+
+        // Кнопка работы
+        if ($workBtn) {
+            const now = Date.now();
+            const cd = workCooldown - now;
+            if (cd > 0) {
+                $workBtn.disabled = true;
+                $workBtn.innerText = `💼 Работать (${Math.ceil(cd / 1000)} сек)`;
+            } else {
+                $workBtn.disabled = false;
+                $workBtn.innerText = '💼 Работать (+5 XP, +5 💵)';
+            }
+        }
+    }
+        // ==== ПРОКАЧКА ИГРОКА ====
+        function addXp(amount) {
+            if (playerLevel >= MAX_PLAYER_LEVEL) return;
+            playerXp += amount;
+
+            let need = xpForLevel(playerLevel);
+            while (playerXp >= need && playerLevel < MAX_PLAYER_LEVEL) {
+                playerXp -= need;
+                playerLevel += 1;
+                need = xpForLevel(playerLevel);
+            }
+
+            if (playerLevel >= MAX_PLAYER_LEVEL) playerXp = 0;
+        }
+
+        // ==== ВЫБОР ПРИЗА ====
+        function pickPrize() {
+            const total = PRIZES.reduce((s, p) => s + p.weight, 0);
+            let r = Math.random() * total;
+            for (const p of PRIZES) {
+                if (r < p.weight) return p;
+                r -= p.weight;
+            }
+            return PRIZES[0];
+        }
+
+        // ==== КРУТКА ====
+        const ITEM_WIDTH = 120;
+
+        function buildTrack(count) {
+            $wheelTrack.innerHTML = '';
+            for (let i = 0; i < count; i++) {
+                const p = PRIZES[Math.floor(Math.random() * PRIZES.length)];
+                const img = document.createElement('img');
+                img.src = p.icon;
+                $wheelTrack.appendChild(img);
+            }
+        }
+
+        function startIdle() {
+            idleMode = true;
+            $wheelTrack.classList.add('idle');
+        }
+
+        function stopIdle() {
+            if (!idleMode) return;
+            const style = window.getComputedStyle($wheelTrack);
+            const matrix = new DOMMatrixReadOnly(style.transform);
+            const currentX = matrix.m41;
+
+            $wheelTrack.classList.remove('idle');
+            $wheelTrack.style.transition = 'none';
+            $wheelTrack.style.transform = `translateX(${currentX}px)`;
+            void $wheelTrack.offsetWidth;
+
+            idleMode = false;
+        }
+
+        function spinWheel(prize, duration = 3500) {
+            stopIdle();
+
+            const wheelWidth = document.getElementById('wheel').offsetWidth;
+            const centerOffset = wheelWidth / 2 - ITEM_WIDTH / 2;
+
+            const trackLength = 80;
+            buildTrack(trackLength);
+
+            const winnerIndex = trackLength - 10;
+            const winnerImg = $wheelTrack.children[winnerIndex];
+            winnerImg.src = prize.icon;
+
+            $wheelTrack.style.transition = 'none';
+            $wheelTrack.style.transform = 'translateX(0px)';
+            void $wheelTrack.offsetWidth;
+
+            const targetX = -(winnerIndex * ITEM_WIDTH) + centerOffset;
+            const jitter = (Math.random() - 0.5) * 80;
+            const finalX = targetX + jitter;
+
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    $wheelTrack.style.transition = `transform ${duration}ms cubic-bezier(0.15, 0.85, 0.25, 1)`;
+                    $wheelTrack.style.transform = `translateX(${finalX}px)`;
+                });
+            });
+        }
+
+        // ==== ОКНО ВЫИГРЫША ====
+        function showWinModal(prize) {
+            $winImg.src = prize.icon;
+
+            if (prize.id === 'empty') {
+                $winTitle.innerText = 'Пусто';
+                $winSub.innerText = 'В этот раз не повезло';
+            } else if (prize.cabbage > 0) {
+                $winTitle.innerText = `+${prize.cabbage} капуста`;
+                $winSub.innerText = 'Закинул в карман';
+            } else if (prize.dollars > 0) {
+                $winTitle.innerText = `+${prize.dollars} баксов`;
+                $winSub.innerText = 'Наличка капнула в карман';
+            } else {
+                $winTitle.innerText = prize.name + ' в инвентаре!';
+                $winSub.innerText = 'Забрал — молодец';
+            }
+
+            $winModal.classList.add('show');
+
+            if (prize.effect === 'sparkle') {
+                spawnSparkles($winBox, 18);
+            }
+        }
+
+        function hideWinModal() {
+            $winModal.classList.remove('show');
+        }
+
+        function spawnSparkles(parent, count) {
+            const rect = parent.getBoundingClientRect();
+            const cx = rect.width / 2;
+            const cy = rect.height / 2;
+
+            for (let i = 0; i < count; i++) {
+                const s = document.createElement('div');
+                s.className = 'sparkle';
+
+                const angle = (Math.PI * 2 * i) / count + Math.random() * 0.5;
+                const distance = 80 + Math.random() * 120;
+                const dx = Math.cos(angle) * distance;
+                const dy = Math.sin(angle) * distance;
+
+                s.style.left = cx + 'px';
+                s.style.top = cy + 'px';
+                s.style.setProperty('--dx', dx + 'px');
+                s.style.setProperty('--dy', dy + 'px');
+                s.style.animationDelay = (Math.random() * 0.3) + 's';
+
+                parent.appendChild(s);
+                setTimeout(() => s.remove(), 1800);
+            }
+        }
+
+        $winClose.addEventListener('click', hideWinModal);
+        $winModal.addEventListener('click', (e) => {
+            if (e.target === $winModal) hideWinModal();
+        });
+
+        // ==== ВКЛАДКИ ====
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tabName = btn.dataset.tab;
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                document.getElementById('tab-' + tabName).classList.add('active');
+
+                // Обновляем лобби при переключении
+                if (tabName === 'lobby') renderLobby();
+            });
+        });
+
+        // ==== IDLE-ДОХОД ====
+        function calculateIdleReward() {
+            const now = Date.now();
+            const diff = Math.min(now - lastSeen, IDLE_MAX_MS);
+            if (diff < IDLE_PERIOD_MS) return { time: 0, reward: 0 };
+
+            const periods = Math.floor(diff / IDLE_PERIOD_MS);
+            const reward = periods * IDLE_REWARD;
+            return { time: diff, reward };
+        }
+
+        function showIdleModal() {
+            const { time, reward } = calculateIdleReward();
+            if (reward <= 0) return;
+
+            const hours = Math.floor(time / 3600000);
+            const minutes = Math.floor((time % 3600000) / 60000);
+
+            $idleTime.innerText = `${hours}ч ${minutes}м`;
+            $idleReward.innerText = `${reward} 💵`;
+            $idleModal.classList.add('show');
+
+            // Начисляем сразу — даже если закроют окно
+            balance += reward;
+            save();
+            render();
+        }
+
+        $idleClose.addEventListener('click', () => {
+            $idleModal.classList.remove('show');
+        });
+        $idleModal.addEventListener('click', (e) => {
+            if (e.target === $idleModal) $idleModal.classList.remove('show');
+        });
+
+        // ==== ОКНО ВВОДА ИМЕНИ ====
+        function showNameModal() {
+            $nameModal.classList.add('show');
+            setTimeout(() => $nameInput.focus(), 300);
+        }
+
+        function hideNameModal() {
+            $nameModal.classList.remove('show');
+        }
+
+        $nameSave.addEventListener('click', () => {
+            const name = $nameInput.value.trim();
+            if (name.length > 0) {
+                baseName = name.slice(0, 25);
+            }
+            save();
+            render();
+            hideNameModal();
+        });
+
+        $nameSkip.addEventListener('click', () => {
+            // baseName остаётся 'Штаб'
+            save();
+            render();
+            hideNameModal();
+        });
+
+        // ==== ОКНО СМЕНЫ ИМЕНИ ====
+        $renameBtn.addEventListener('click', () => {
+            if (cabbage < renameCost) return;
+            $renameCabbage.innerText = `${cabbage} 🥬`;
+            $renameInput.value = baseName;
+            $renameModal.classList.add('show');
+            setTimeout(() => $renameInput.focus(), 300);
+        });
+
+        $renameSave.addEventListener('click', () => {
+            const name = $renameInput.value.trim();
+            if (name.length === 0) return;
+            if (cabbage < renameCost) return;
+
+            cabbage -= renameCost;
+            baseName = name.slice(0, 25);
+
+            save();
+            render();
+            $renameModal.classList.remove('show');
+        });
+
+        $renameCancel.addEventListener('click', () => {
+            $renameModal.classList.remove('show');
+        });
+        $renameModal.addEventListener('click', (e) => {
+            if (e.target === $renameModal) $renameModal.classList.remove('show');
+        });
+
+        // ==== АПГРЕЙД БАЗЫ ====
+                $upgradeBtn.addEventListener('click', () => {
+            const next = BASES[baseLevel];
+            if (!next) return;
+            if (balance < next.cost) return;
+            if (playerLevel < next.playerReq) return;
+
+            balance -= next.cost;
+            baseLevel += 1;
+
+            save();
+            render();
+        });
+		        // ==== РАБОТА ====
+        document.getElementById('work-btn').addEventListener('click', () => {
+            const now = Date.now();
+            if (now < workCooldown) return;
+
+            addXp(5);
+            balance += 5;
+            workCooldown = now + 10000; // 10 сек кулдаун
+
+            save();
+            render();
+        });
+
+        // Обновляем кулдаун каждую секунду
+        setInterval(() => {
+            if (document.getElementById('tab-lobby').classList.contains('active')) {
+                renderPlayerLevel();
+            }
+        }, 1000);
+
+        // ==== КНОПКА КРУТКИ ====
+        $spinBtn.addEventListener('click', () => {
+            if (spinning || balance < 1) return;
+                        spinning = true;
+            balance -= 1;
+            addXp(2);
+            render();
+
+            const prize = pickPrize();
+            spinWheel(prize, 3500);
+
+            setTimeout(() => {
+                if (prize.dollars > 0) balance += prize.dollars;
+                if (prize.cabbage > 0) cabbage += prize.cabbage;
+                if (prize.dollars === 0 && prize.cabbage === 0 && prize.id !== 'empty') {
+                    inventory.push(prize.id);
+                }
+
+                spinning = false;
+                save();
+                render();
+                showWinModal(prize);
+            }, 3600);
+        });
+
+        // ==== ЧИТ-КНОПКА ====
+        document.getElementById('cheat-btn').addEventListener('click', () => {
+            balance += 100;
+            cabbage += 5;
+            save();
+            render();
+        });
+
+        // ==== СБРОС ====
+        document.getElementById('reset-btn').addEventListener('click', () => {
+            ['balance','cabbage','inventory','baseName','baseLevel','lastSeen','playerLevel','playerXp','workCooldown']
+                .forEach(k => tg.CloudStorage.removeItem(k));
+            location.reload();
+        });
+
+        // ==== СТАРТ ====
+        load(() => {
+            // Проверяем, первый ли это вход
+            tg.CloudStorage.getItem('baseName', (err, val) => {
+                if (!err && !val) {
+                    // Первый вход — показываем окно ввода имени
+                    showNameModal();
+                } else {
+                    // Не первый — показываем idle-награду
+                    setTimeout(showIdleModal, 400);
+                }
+            });
+
+            if (balance === 0 && cabbage === 0 && inventory.length === 0) {
+                balance = 10;
+                save();
+            }
+            buildTrack(60);
+            startIdle();
+            render();
+        });
+
+                // ==== НАДЁЖНОЕ СОХРАНЕНИЕ lastSeen ====
+        function saveLastSeen() {
+            lastSeen = Date.now();
+            tg.CloudStorage.setItem('lastSeen', String(lastSeen));
+        }
+
+        // 1. Когда игрок сворачивает приложение
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') saveLastSeen();
+        });
+
+        // 2. Когда страница скрывается (Safari, iOS)
+        window.addEventListener('pagehide', saveLastSeen);
+
+        // 3. Когда игрок закрывает приложение
+        window.addEventListener('beforeunload', saveLastSeen);
+
+        // 4. Автосохранение каждые 15 секунд
+        setInterval(saveLastSeen, 15000);
+    </script>
+</body>
+</html>
