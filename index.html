@@ -129,13 +129,13 @@
             border-top: 1px solid #3a3a3a;
             z-index: 50;
         }
-        .tab-btn {
+                .tab-btn {
             flex: 1;
-            padding: 12px 4px;
+            padding: 10px 2px;
             background: transparent;
             color: #888;
             border: none;
-            font-size: 12px;
+            font-size: 10px;
             font-weight: bold;
             cursor: pointer;
             border-radius: 0;
@@ -506,6 +506,91 @@
         #shop-weapons, #shop-armors {
             margin-bottom: 20px;
         }
+		        /* ==== БИЗНЕС ==== */
+        #business-header {
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+        .bh-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+        }
+        .bh-row span { color: #888; }
+        .bh-row b { color: #ffcc00; }
+
+        .biz-item {
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 10px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            text-align: left;
+            border-left: 4px solid #444;
+            transition: transform 0.15s ease-out;
+        }
+        .biz-item.owned { border-left-color: #44dd44; }
+        .biz-item.locked { opacity: 0.5; }
+        .biz-item:active { transform: scale(0.98); }
+
+        .biz-icon {
+            font-size: 40px;
+            width: 50px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .biz-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .biz-name {
+            font-size: 15px;
+            font-weight: bold;
+            color: #eee;
+            margin-bottom: 4px;
+        }
+        .biz-level {
+            font-size: 13px;
+            color: #ffcc00;
+            margin-bottom: 4px;
+        }
+        .biz-income {
+            font-size: 13px;
+            color: #66ff66;
+        }
+        .biz-locked-text {
+            font-size: 13px;
+            color: #ff6666;
+        }
+
+        .biz-buy-btn {
+            width: auto;
+            padding: 10px 14px;
+            font-size: 13px;
+            margin: 0;
+            background: #44aa44;
+            color: white;
+            flex-shrink: 0;
+        }
+        .biz-buy-btn:disabled { background: #444; color: #888; }
+        .biz-buy-btn:active:not(:disabled) { background: #338833; }
+
+        .biz-upgrade-btn {
+            background: #44aaff;
+        }
+        .biz-upgrade-btn:active:not(:disabled) { background: #3388cc; }
+
+        .biz-max {
+            background: #2a2a2a;
+            color: #66ff66;
+            border: 1px solid #66ff66;
+            cursor: default;
+        }
 
         /* ==== ОКНА (модалки) ==== */
         .modal {
@@ -704,6 +789,21 @@
         <h2>🛡 Активная броня</h2>
         <div id="inv-armors"><div>Пусто</div></div>
     </div>
+	    <!-- ==== ВКЛАДКА: БИЗНЕС ==== -->
+    <div class="tab-content" id="tab-business">
+        <div id="business-header">
+            <div class="bh-row">
+                <span>💰 Общий доход</span>
+                <b id="total-income">0 💵/сек</b>
+            </div>
+            <div class="bh-row">
+                <span>🏢 Бизнесов куплено</span>
+                <b id="business-count">0 / 6</b>
+            </div>
+        </div>
+        <div id="business-list"></div>
+    </div>
+
 
         <!-- ==== ВКЛАДКА: PVP ==== -->
     <div class="tab-content" id="tab-pvp">
@@ -753,13 +853,14 @@
         </div>
     </div>
 
-    <!-- ==== НИЖНИЕ ТАБЫ ==== -->
+        <!-- ==== НИЖНИЕ ТАБЫ ==== -->
     <div id="tabs">
         <button class="tab-btn active" data-tab="lobby">🏠 Лобби</button>
         <button class="tab-btn" data-tab="wheel">🎰 Рулетка</button>
         <button class="tab-btn" data-tab="shop">🛒 Магазин</button>
         <button class="tab-btn" data-tab="inventory">🎒 Инвентарь</button>
         <button class="tab-btn" data-tab="pvp">⚔️ PvP</button>
+        <button class="tab-btn" data-tab="business">🏢 Бизнес</button>
     </div>
 
     <!-- ==== ОКНО ВВОДА ИМЕНИ БАЗЫ ==== -->
@@ -881,6 +982,33 @@
             ancient:  'Древнее',
             divine:   'Божественное',
         };
+		
+		        // ==== БИЗНЕСЫ ====
+        // price — цена покупки (уровень 1)
+        // income — доход в секунду на уровне 1
+        // playerReq — требуемый уровень игрока
+        // Максимум уровней — 5, каждый уровень +50% к доходу
+        const BUSINESSES = [
+            { id: 'burger', name: 'Бургерная', icon: '🍔', price: 500,     income: 2,    playerReq: 2  },
+            { id: 'shop',   name: 'Ларёк',     icon: '🏪', price: 2000,    income: 8,    playerReq: 5  },
+            { id: 'pharm',  name: 'Аптека',    icon: '💊', price: 10000,   income: 30,   playerReq: 10 },
+            { id: 'casino', name: 'Казино',    icon: '🎰', price: 50000,   income: 120,  playerReq: 20 },
+            { id: 'plant',  name: 'Завод',     icon: '🏭', price: 200000,  income: 500,  playerReq: 35 },
+            { id: 'bank',   name: 'Банк',      icon: '🏦', price: 1000000, income: 2000, playerReq: 50 },
+        ];
+
+        const MAX_BIZ_LEVEL = 5;
+
+        // Доход бизнеса на уровне L: baseIncome × (1 + 0.5×(L-1))
+        function bizIncomeAtLevel(base, level) {
+            return Math.round(base * (1 + 0.5 * (level - 1)));
+        }
+
+        // Цена улучшения на уровень L (из уровня L-1)
+        function bizUpgradeCost(basePrice, level) {
+            return Math.round(basePrice * level * 2);
+        }
+
 
 
 
@@ -939,8 +1067,13 @@ let renameCost = 20;       // стоимость смены имени
         let currentBot = null;
         let battleInterval = null;
 
-        // ==== МАГАЗИН ====
+                // ==== МАГАЗИН ====
         let ownedItems = []; // массив id купленных предметов
+
+        // ==== БИЗНЕС ====
+        // объект вида { burger: 1, shop: 3, ... } — id: уровень
+        // Если бизнеса нет в объекте — не куплен
+        let ownedBusinesses = {};
 
         // ==== ЭЛЕМЕНТЫ ====
         const $balance    = document.getElementById('balance');
@@ -998,6 +1131,7 @@ let renameCost = 20;       // стоимость смены имени
     tg.CloudStorage.setItem('wins', String(wins));
     tg.CloudStorage.setItem('losses', String(losses));
     tg.CloudStorage.setItem('ownedItems', JSON.stringify(ownedItems));
+    tg.CloudStorage.setItem('ownedBusinesses', JSON.stringify(ownedBusinesses));
 }
         function load(callback) {
     tg.CloudStorage.getItem('balance', (err, val) => {
@@ -1024,11 +1158,16 @@ let renameCost = 20;       // стоимость смены имени
                                                 if (!err11 && val11) wins = parseInt(val11, 10) || 0;
                                                                                                 tg.CloudStorage.getItem('losses', (err12, val12) => {
                                                     if (!err12 && val12) losses = parseInt(val12, 10) || 0;
-                                                    tg.CloudStorage.getItem('ownedItems', (err13, val13) => {
+                                                                                                        tg.CloudStorage.getItem('ownedItems', (err13, val13) => {
                                                         if (!err13 && val13) {
                                                             try { ownedItems = JSON.parse(val13); } catch(e) { ownedItems = []; }
                                                         }
-                                                        if (callback) callback();
+                                                        tg.CloudStorage.getItem('ownedBusinesses', (err14, val14) => {
+                                                            if (!err14 && val14) {
+                                                                try { ownedBusinesses = JSON.parse(val14); } catch(e) { ownedBusinesses = {}; }
+                                                            }
+                                                            if (callback) callback();
+                                                        });
                                                     });
                                                 });
                                             });
@@ -1072,8 +1211,11 @@ let renameCost = 20;       // стоимость смены имени
             // Магазин
             renderShop();
 
-            // Купленное в инвентаре
+                        // Купленное в инвентаре
             renderOwned();
+
+            // Бизнес
+            renderBusiness();
         }
 
         function renderLobby() {
@@ -1276,6 +1418,137 @@ let renameCost = 20;       // стоимость смены имени
                 .filter(i => i.type === 'armor' && ownedItems.includes(i.id))
                 .reduce((sum, i) => sum + i.hp, 0);
         }
+		
+		        // ==== БИЗНЕС — ЛОГИКА ====
+        function getTotalIncomePerSec() {
+            let total = 0;
+            for (const biz of BUSINESSES) {
+                const lvl = ownedBusinesses[biz.id];
+                if (lvl) {
+                    total += bizIncomeAtLevel(biz.income, lvl);
+                }
+            }
+            return total;
+        }
+
+        function renderBusiness() {
+            const list = document.getElementById('business-list');
+            const totalIncome = getTotalIncomePerSec();
+            const ownedCount = Object.keys(ownedBusinesses).length;
+
+            document.getElementById('total-income').innerText = `${totalIncome} 💵/сек`;
+            document.getElementById('business-count').innerText = `${ownedCount} / ${BUSINESSES.length}`;
+
+            list.innerHTML = BUSINESSES.map(biz => {
+                const lvl = ownedBusinesses[biz.id] || 0;
+                const locked = playerLevel < biz.playerReq && lvl === 0;
+
+                // Не куплен
+                if (lvl === 0) {
+                    if (locked) {
+                        return `
+                            <div class="biz-item locked">
+                                <div class="biz-icon">${biz.icon}</div>
+                                <div class="biz-info">
+                                    <div class="biz-name">${biz.name}</div>
+                                    <div class="biz-locked-text">🔒 Нужен ${biz.playerReq} уровень</div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    const canAfford = balance >= biz.price;
+                    return `
+                        <div class="biz-item">
+                            <div class="biz-icon">${biz.icon}</div>
+                            <div class="biz-info">
+                                <div class="biz-name">${biz.name}</div>
+                                <div class="biz-income">+${biz.income} 💵/сек</div>
+                                <div class="biz-level">${biz.price.toLocaleString('ru')} 💵</div>
+                            </div>
+                            <button class="biz-buy-btn" data-buy="${biz.id}" ${canAfford ? '' : 'disabled'}>
+                                Купить
+                            </button>
+                        </div>
+                    `;
+                }
+
+                // Куплен
+                const currentIncome = bizIncomeAtLevel(biz.income, lvl);
+                const isMax = lvl >= MAX_BIZ_LEVEL;
+
+                if (isMax) {
+                    return `
+                        <div class="biz-item owned">
+                            <div class="biz-icon">${biz.icon}</div>
+                            <div class="biz-info">
+                                <div class="biz-name">${biz.name}</div>
+                                <div class="biz-level">Уровень ${lvl} / ${MAX_BIZ_LEVEL}</div>
+                                <div class="biz-income">+${currentIncome} 💵/сек</div>
+                            </div>
+                            <button class="biz-buy-btn biz-max" disabled>MAX</button>
+                        </div>
+                    `;
+                }
+
+                const nextIncome = bizIncomeAtLevel(biz.income, lvl + 1);
+                const upgradeCost = bizUpgradeCost(biz.price, lvl + 1);
+                const canUpgrade = balance >= upgradeCost;
+
+                return `
+                    <div class="biz-item owned">
+                        <div class="biz-icon">${biz.icon}</div>
+                        <div class="biz-info">
+                            <div class="biz-name">${biz.name}</div>
+                            <div class="biz-level">Уровень ${lvl} / ${MAX_BIZ_LEVEL}</div>
+                            <div class="biz-income">+${currentIncome} 💵/сек → ${nextIncome} 💵/сек</div>
+                            <div style="font-size:12px;color:#aaa;margin-top:4px;">${upgradeCost.toLocaleString('ru')} 💵</div>
+                        </div>
+                        <button class="biz-buy-btn biz-upgrade-btn" data-upgrade="${biz.id}" ${canUpgrade ? '' : 'disabled'}>
+                            ⬆️
+                        </button>
+                    </div>
+                `;
+            }).join('');
+
+            // Обработчики
+            list.querySelectorAll('[data-buy]').forEach(btn => {
+                btn.onclick = () => buyBusiness(btn.dataset.buy);
+            });
+            list.querySelectorAll('[data-upgrade]').forEach(btn => {
+                btn.onclick = () => upgradeBusiness(btn.dataset.upgrade);
+            });
+        }
+
+        function buyBusiness(bizId) {
+            const biz = BUSINESSES.find(b => b.id === bizId);
+            if (!biz) return;
+            if (ownedBusinesses[bizId]) return;
+            if (playerLevel < biz.playerReq) return;
+            if (balance < biz.price) return;
+
+            balance -= biz.price;
+            ownedBusinesses[bizId] = 1;
+
+            save();
+            render();
+        }
+
+        function upgradeBusiness(bizId) {
+            const biz = BUSINESSES.find(b => b.id === bizId);
+            if (!biz) return;
+            const lvl = ownedBusinesses[bizId] || 0;
+            if (lvl === 0 || lvl >= MAX_BIZ_LEVEL) return;
+
+            const cost = bizUpgradeCost(biz.price, lvl + 1);
+            if (balance < cost) return;
+
+            balance -= cost;
+            ownedBusinesses[bizId] = lvl + 1;
+
+            save();
+            render();
+        }
+
 
 
 
@@ -1745,12 +2018,23 @@ let renameCost = 20;       // стоимость смены имени
 
         // ==== СБРОС ====
         document.getElementById('reset-btn').addEventListener('click', () => {
-                        ['balance','cabbage','inventory','baseName','baseLevel','lastSeen','playerLevel','playerXp','workCooldown','rating','wins','losses','ownedItems']
+                        ['balance','cabbage','inventory','baseName','baseLevel','lastSeen','playerLevel','playerXp','workCooldown','rating','wins','losses','ownedItems','ownedBusinesses']
                 .forEach(k => tg.CloudStorage.removeItem(k));
             location.reload();
         });
 
         // ==== СТАРТ ====
+		        // ==== ПАССИВНЫЙ ДОХОД ОТ БИЗНЕСОВ ====
+        // Каждую секунду начисляет общий доход бизнесов
+        setInterval(() => {
+            const income = getTotalIncomePerSec();
+            if (income > 0) {
+                balance += income;
+                save();
+                render();
+            }
+        }, 1000);
+
         load(() => {
             // Проверяем, первый ли это вход
             tg.CloudStorage.getItem('baseName', (err, val) => {
