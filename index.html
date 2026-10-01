@@ -337,6 +337,99 @@
         #work-btn:active:not(:disabled) { background: #3388cc; }
         #upgrade-btn:disabled { background: #444; color: #888; }
         #upgrade-btn:active:not(:disabled) { background: #338833; }
+		        /* ==== PVP ==== */
+        #pvp-panel {
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 12px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            font-size: 14px;
+        }
+        .pvp-stat {
+            display: flex;
+            justify-content: space-between;
+            background: #1a1a1a;
+            padding: 8px 10px;
+            border-radius: 8px;
+        }
+        .pvp-stat span { color: #888; }
+        .pvp-stat b { color: #ffcc00; }
+
+        #find-opponent-btn {
+            background: #ff4444;
+            color: white;
+            font-size: 17px;
+            padding: 18px;
+        }
+        #find-opponent-btn:active:not(:disabled) { background: #cc3333; }
+
+        #pvp-battle {
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 12px;
+        }
+        .hp-block {
+            margin-bottom: 12px;
+            text-align: left;
+        }
+        .hp-name {
+            font-size: 14px;
+            margin-bottom: 4px;
+            color: #ccc;
+        }
+        .hp-bar {
+            width: 100%;
+            height: 18px;
+            background: #1a1a1a;
+            border-radius: 9px;
+            overflow: hidden;
+            border: 1px solid #444;
+        }
+        .hp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #44dd44, #66ff66);
+            transition: width 0.3s ease-out;
+        }
+        .hp-fill.hp-enemy {
+            background: linear-gradient(90deg, #dd4444, #ff6666);
+        }
+        .hp-text {
+            font-size: 12px;
+            color: #888;
+            text-align: right;
+            margin-top: 2px;
+        }
+
+        #battle-log {
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 10px;
+            height: 140px;
+            overflow-y: auto;
+            text-align: left;
+            font-size: 13px;
+            font-family: monospace;
+            color: #ccc;
+        }
+        #battle-log div {
+            margin-bottom: 4px;
+            animation: logFadeIn 0.3s ease-out;
+        }
+        @keyframes logFadeIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+        .log-dmg-player { color: #66ff66; }
+        .log-dmg-bot { color: #ff6666; }
+        .log-info { color: #ffcc00; font-weight: bold; }
+
+        #pvp-result {
+            margin-top: 12px;
+        }
 
         /* ==== ОКНА (модалки) ==== */
         .modal {
@@ -529,11 +622,51 @@
         <div id="inventory"><div>Пусто</div></div>
     </div>
 
-    <!-- ==== ВКЛАДКА: PVP ==== -->
+        <!-- ==== ВКЛАДКА: PVP ==== -->
     <div class="tab-content" id="tab-pvp">
-        <div class="stub">
-            <div class="big">⚔️</div>
-            <div>Скоро здесь будут бои с другими картелями</div>
+        <div id="pvp-panel">
+            <div class="pvp-stat">
+                <span>🏆 Рейтинг</span>
+                <b id="pvp-rating">0</b>
+            </div>
+            <div class="pvp-stat">
+                <span>🎖 Лига</span>
+                <b id="pvp-league">Бронза</b>
+            </div>
+            <div class="pvp-stat">
+                <span>⚔️ Победы</span>
+                <b id="pvp-wins">0</b>
+            </div>
+            <div class="pvp-stat">
+                <span>💀 Поражения</span>
+                <b id="pvp-losses">0</b>
+            </div>
+        </div>
+
+        <div id="pvp-find">
+            <button id="find-opponent-btn">🔍 Найти противника</button>
+        </div>
+
+        <div id="pvp-battle" style="display: none;">
+            <div class="hp-block">
+                <div class="hp-name">👤 Ты</div>
+                <div class="hp-bar"><div class="hp-fill" id="hp-player" style="width: 100%"></div></div>
+                <div class="hp-text" id="hp-player-text">50 / 50</div>
+            </div>
+            <div class="hp-block">
+                <div class="hp-name" id="bot-name">🤖 Противник</div>
+                <div class="hp-bar"><div class="hp-fill hp-enemy" id="hp-bot" style="width: 100%"></div></div>
+                <div class="hp-text" id="hp-bot-text">50 / 50</div>
+            </div>
+            <div id="battle-log"></div>
+        </div>
+
+        <div id="pvp-result" style="display: none;">
+            <div class="modal-box" style="animation: none;">
+                <div class="modal-title" id="result-title">Победа!</div>
+                <div class="modal-text" id="result-text"></div>
+                <button id="result-close">Продолжить</button>
+            </div>
         </div>
     </div>
 
@@ -600,6 +733,42 @@
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
+		        // ==== ПРОТИВНИКИ PvP ====
+        const OPPONENT_NAMES = [
+            'Картель Рамиреса',
+            'Банда Хуана',
+            'Синдикат Лопеса',
+            'Клан Диего',
+            'Организация Эрнандес',
+            'Бригада Санчеса',
+            'Семья Моралеса',
+            'Картель Тихуаны',
+            'Банда Койота',
+            'Чёрный Орёл',
+            'Синдикат Гарсиа',
+            'Клан Чикано',
+            'Отряд Кабальеро',
+            'Группировка Кастро',
+            'Братство Пескадора',
+        ];
+
+        // ==== РЕЙТИНГ И ЛИГИ ====
+        const LEAGUES = [
+            { min: 0,    name: 'Бронза',  emoji: '🥉' },
+            { min: 100,  name: 'Серебро', emoji: '🥈' },
+            { min: 500,  name: 'Золото',  emoji: '🥇' },
+            { min: 2000, name: 'Платина', emoji: '💎' },
+            { min: 5000, name: 'Алмаз',   emoji: '👑' },
+        ];
+
+        function getLeague(rating) {
+            let league = LEAGUES[0];
+            for (const l of LEAGUES) {
+                if (rating >= l.min) league = l;
+            }
+            return league;
+        }
+
 
         // ==== ПРИЗЫ ====
         const PRIZES = [
@@ -644,10 +813,17 @@ let baseLevel = 1;
 let lastSeen = Date.now(); // когда игрок последний раз был в игре
 let renameCost = 20;       // стоимость смены имени
 
-// ==== ПРОКАЧКА ИГРОКА ====
-let playerLevel = 1;
-let playerXp = 0;          // накопленный XP на текущем уровне
-let workCooldown = 0;      // timestamp, когда можно снова работать       // стоимость смены имени
+        // ==== ПРОКАЧКА ИГРОКА ====
+        let playerLevel = 1;
+        let playerXp = 0;
+        let workCooldown = 0;
+
+        // ==== PVP ====
+        let rating = 0;
+        let wins = 0;
+        let losses = 0;
+        let currentBot = null;      // текущий противник
+        let battleInterval = null;  // таймер боя
 
         // ==== ЭЛЕМЕНТЫ ====
         const $balance    = document.getElementById('balance');
@@ -701,6 +877,9 @@ let workCooldown = 0;      // timestamp, когда можно снова раб
     tg.CloudStorage.setItem('playerLevel', String(playerLevel));
     tg.CloudStorage.setItem('playerXp', String(playerXp));
     tg.CloudStorage.setItem('workCooldown', String(workCooldown));
+    tg.CloudStorage.setItem('rating', String(rating));
+    tg.CloudStorage.setItem('wins', String(wins));
+    tg.CloudStorage.setItem('losses', String(losses));
 }
         function load(callback) {
     tg.CloudStorage.getItem('balance', (err, val) => {
@@ -719,9 +898,18 @@ let workCooldown = 0;      // timestamp, когда можно снова раб
                                 if (!err7 && val7) playerLevel = parseInt(val7, 10) || 1;
                                 tg.CloudStorage.getItem('playerXp', (err8, val8) => {
                                     if (!err8 && val8) playerXp = parseInt(val8, 10) || 0;
-                                    tg.CloudStorage.getItem('workCooldown', (err9, val9) => {
+                                                                        tg.CloudStorage.getItem('workCooldown', (err9, val9) => {
                                         if (!err9 && val9) workCooldown = parseInt(val9, 10) || 0;
-                                        if (callback) callback();
+                                        tg.CloudStorage.getItem('rating', (err10, val10) => {
+                                            if (!err10 && val10) rating = parseInt(val10, 10) || 0;
+                                            tg.CloudStorage.getItem('wins', (err11, val11) => {
+                                                if (!err11 && val11) wins = parseInt(val11, 10) || 0;
+                                                tg.CloudStorage.getItem('losses', (err12, val12) => {
+                                                    if (!err12 && val12) losses = parseInt(val12, 10) || 0;
+                                                    if (callback) callback();
+                                                });
+                                            });
+                                        });
                                     });
                                 });
                             });
@@ -752,8 +940,11 @@ let workCooldown = 0;      // timestamp, когда можно снова раб
                 }).join('');
             }
 
-            // Лобби
+                        // Лобби
             renderLobby();
+
+            // PvP
+            renderPvp();
         }
 
         function renderLobby() {
@@ -842,6 +1033,16 @@ let workCooldown = 0;      // timestamp, когда можно снова раб
 
             if (playerLevel >= MAX_PLAYER_LEVEL) playerXp = 0;
         }
+		        // ==== ОТРИСОВКА PVP ====
+        function renderPvp() {
+            document.getElementById('pvp-rating').innerText = rating;
+            document.getElementById('pvp-wins').innerText = wins;
+            document.getElementById('pvp-losses').innerText = losses;
+
+            const league = getLeague(rating);
+            document.getElementById('pvp-league').innerText = `${league.emoji} ${league.name}`;
+        }
+
 
         // ==== ВЫБОР ПРИЗА ====
         function pickPrize() {
@@ -976,17 +1177,24 @@ let workCooldown = 0;      // timestamp, когда можно снова раб
 
         // ==== ВКЛАДКИ ====
         document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const tabName = btn.dataset.tab;
-                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-                document.getElementById('tab-' + tabName).classList.add('active');
+    btn.addEventListener('click', () => {
+        const tabName = btn.dataset.tab;
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.getElementById('tab-' + tabName).classList.add('active');
 
-                // Обновляем лобби при переключении
-                if (tabName === 'lobby') renderLobby();
-            });
-        });
+        // Обновляем лобби при переключении
+        if (tabName === 'lobby') renderLobby();
+
+        // Сбрасываем состояние PvP при переключении (если бой не идёт)
+        if (tabName === 'pvp' && !battleInterval) {
+            document.getElementById('pvp-battle').style.display = 'none';
+            document.getElementById('pvp-result').style.display = 'none';
+            document.getElementById('find-opponent-btn').style.display = 'block';
+        }
+    });
+});
 
         // ==== IDLE-ДОХОД ====
         function calculateIdleReward() {
@@ -1111,6 +1319,154 @@ let workCooldown = 0;      // timestamp, когда можно снова раб
                 renderPlayerLevel();
             }
         }, 1000);
+		        // ==== PVP ЛОГИКА ====
+        const $findBtn      = document.getElementById('find-opponent-btn');
+        const $pvpBattle    = document.getElementById('pvp-battle');
+        const $pvpResult    = document.getElementById('pvp-result');
+        const $hpPlayer     = document.getElementById('hp-player');
+        const $hpBot        = document.getElementById('hp-bot');
+        const $hpPlayerText = document.getElementById('hp-player-text');
+        const $hpBotText    = document.getElementById('hp-bot-text');
+        const $botName      = document.getElementById('bot-name');
+        const $battleLog    = document.getElementById('battle-log');
+        const $resultTitle  = document.getElementById('result-title');
+        const $resultText   = document.getElementById('result-text');
+        const $resultClose  = document.getElementById('result-close');
+
+        function randomInt(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        function logBattle(text, cls) {
+            const d = document.createElement('div');
+            if (cls) d.className = cls;
+            d.innerText = text;
+            $battleLog.appendChild(d);
+            $battleLog.scrollTop = $battleLog.scrollHeight;
+        }
+
+        function updateHpBars() {
+            const pPct = Math.max(0, (currentBot.playerHp / currentBot.playerMaxHp) * 100);
+            const bPct = Math.max(0, (currentBot.botHp / currentBot.botMaxHp) * 100);
+
+            $hpPlayer.style.width = pPct + '%';
+            $hpBot.style.width = bPct + '%';
+            $hpPlayerText.innerText = `${Math.max(0, currentBot.playerHp)} / ${currentBot.playerMaxHp}`;
+            $hpBotText.innerText = `${Math.max(0, currentBot.botHp)} / ${currentBot.botMaxHp}`;
+        }
+
+        $findBtn.addEventListener('click', () => {
+            // Создаём противника
+            const botLevel = Math.max(1, playerLevel + randomInt(-1, 3));
+            const botName = OPPONENT_NAMES[Math.floor(Math.random() * OPPONENT_NAMES.length)];
+
+            currentBot = {
+                name: botName,
+                level: botLevel,
+                playerMaxHp: 50 + playerLevel * 5,
+                botMaxHp: 50 + botLevel * 5,
+                playerHp: 50 + playerLevel * 5,
+                botHp: 50 + botLevel * 5,
+                playerDmg: 5 + playerLevel * 1.5,
+                botDmg: 4 + botLevel * 1.2,
+            };
+
+            // Показываем экран боя
+            $findBtn.style.display = 'none';
+            $pvpBattle.style.display = 'block';
+            $pvpResult.style.display = 'none';
+            $battleLog.innerHTML = '';
+            $botName.innerText = `🤖 ${botName} (ур. ${botLevel})`;
+            updateHpBars();
+
+            logBattle(`⚔️ Бой начался! ${botName} (ур. ${botLevel})`, 'log-info');
+
+            // 15 секунд боя = 30 ударов (по 0.5 сек)
+            let tick = 0;
+            battleInterval = setInterval(() => {
+                tick++;
+
+                // Игрок бьёт
+                const pDmg = Math.round(currentBot.playerDmg + randomInt(0, 5));
+                currentBot.botHp -= pDmg;
+                logBattle(`👤 Ты ударил на ${pDmg}`, 'log-dmg-player');
+                updateHpBars();
+
+                if (currentBot.botHp <= 0) {
+                    clearInterval(battleInterval);
+                    endBattle(true);
+                    return;
+                }
+
+                // Бот бьёт
+                const bDmg = Math.round(currentBot.botDmg + randomInt(0, 5));
+                currentBot.playerHp -= bDmg;
+                logBattle(`🤖 ${botName} ударил на ${bDmg}`, 'log-dmg-bot');
+                updateHpBars();
+
+                if (currentBot.playerHp <= 0) {
+                    clearInterval(battleInterval);
+                    endBattle(false);
+                    return;
+                }
+
+                // Если 15 сек прошло, но никто не умер — решаем по HP
+                if (tick >= 30) {
+                    clearInterval(battleInterval);
+                    if (currentBot.playerHp > currentBot.botHp) {
+                        endBattle(true);
+                    } else {
+                        endBattle(false);
+                    }
+                }
+            }, 500);
+        });
+
+        function endBattle(win) {
+            $pvpBattle.style.display = 'none';
+            $pvpResult.style.display = 'block';
+            $findBtn.style.display = 'block';
+
+            if (win) {
+                const reward = 20 + currentBot.level * 10;
+                const xpReward = 10 + currentBot.level * 5;
+
+                balance += reward;
+                addXp(xpReward);
+                rating += 10;
+                wins += 1;
+
+                $resultTitle.innerText = '🏆 Победа!';
+                $resultTitle.style.color = '#66ff66';
+                $resultText.innerHTML = `
+                    Ты победил <b>${currentBot.name}</b><br><br>
+                    💵 +${reward} баксов<br>
+                    ⭐ +${xpReward} XP<br>
+                    🏆 +10 рейтинга
+                `;
+            } else {
+                rating = Math.max(0, rating - 5);
+                losses += 1;
+
+                $resultTitle.innerText = '💀 Поражение';
+                $resultTitle.style.color = '#ff6666';
+                $resultText.innerHTML = `
+                    <b>${currentBot.name}</b> оказался сильнее<br><br>
+                    🏆 −5 рейтинга<br>
+                    Деньги не потеряны
+                `;
+            }
+
+            save();
+            render();
+            renderPvp();
+        }
+
+        $resultClose.addEventListener('click', () => {
+            $pvpResult.style.display = 'none';
+            currentBot = null;
+        });
+
 
         // ==== КНОПКА КРУТКИ ====
         $spinBtn.addEventListener('click', () => {
@@ -1147,7 +1503,7 @@ let workCooldown = 0;      // timestamp, когда можно снова раб
 
         // ==== СБРОС ====
         document.getElementById('reset-btn').addEventListener('click', () => {
-            ['balance','cabbage','inventory','baseName','baseLevel','lastSeen','playerLevel','playerXp','workCooldown']
+                        ['balance','cabbage','inventory','baseName','baseLevel','lastSeen','playerLevel','playerXp','workCooldown','rating','wins','losses']
                 .forEach(k => tg.CloudStorage.removeItem(k));
             location.reload();
         });
