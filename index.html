@@ -430,6 +430,82 @@
         #pvp-result {
             margin-top: 12px;
         }
+		        /* ==== МАГАЗИН ==== */
+        .shop-item {
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-align: left;
+            border-left: 4px solid #666;
+            transition: transform 0.15s ease-out;
+        }
+        .shop-item:active { transform: scale(0.98); }
+
+        /* Редкости — цвет полоски слева */
+        .shop-item.rarity-trash    { border-left-color: #666; }
+        .shop-item.rarity-common   { border-left-color: #aaa; }
+        .shop-item.rarity-uncommon { border-left-color: #44dd44; }
+        .shop-item.rarity-rare     { border-left-color: #4488ff; }
+        .shop-item.rarity-epic     { border-left-color: #aa44ff; }
+        .shop-item.rarity-legend   { border-left-color: #ffcc00; }
+        .shop-item.rarity-mythic   { border-left-color: #ff4444; }
+        .shop-item.rarity-ancient  { border-left-color: #44ffdd; }
+        .shop-item.rarity-divine   { border-left-color: #ff88ff; }
+
+        .shop-icon {
+            font-size: 40px;
+            width: 50px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .shop-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .shop-name {
+            font-size: 15px;
+            font-weight: bold;
+            color: #eee;
+            margin-bottom: 4px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .shop-stats {
+            font-size: 13px;
+            color: #ffcc00;
+            margin-bottom: 6px;
+        }
+        .shop-price {
+            font-size: 14px;
+            color: #ccc;
+        }
+
+        .shop-buy-btn {
+            width: auto;
+            padding: 10px 16px;
+            font-size: 14px;
+            margin: 0;
+            background: #44aa44;
+            color: white;
+            flex-shrink: 0;
+        }
+        .shop-buy-btn:disabled { background: #444; color: #888; }
+        .shop-buy-btn:active:not(:disabled) { background: #338833; }
+        .shop-buy-btn.owned {
+            background: #2a2a2a;
+            color: #66ff66;
+            border: 1px solid #66ff66;
+            cursor: default;
+        }
+
+        #shop-weapons, #shop-armors {
+            margin-bottom: 20px;
+        }
 
         /* ==== ОКНА (модалки) ==== */
         .modal {
@@ -608,18 +684,25 @@
         <button id="reset-btn" class="reset-btn">🗑 Сбросить прогресс</button>
     </div>
 
-    <!-- ==== ВКЛАДКА: МАГАЗИН ==== -->
+        <!-- ==== ВКЛАДКА: МАГАЗИН ==== -->
     <div class="tab-content" id="tab-shop">
-        <div class="stub">
-            <div class="big">🛒</div>
-            <div>Скоро здесь будет оружие и броня картеля</div>
-        </div>
+        <h2>🔫 Оружие</h2>
+        <div id="shop-weapons"></div>
+
+        <h2>🛡 Броня</h2>
+        <div id="shop-armors"></div>
     </div>
 
-    <!-- ==== ВКЛАДКА: ИНВЕНТАРЬ ==== -->
+        <!-- ==== ВКЛАДКА: ИНВЕНТАРЬ ==== -->
     <div class="tab-content" id="tab-inventory">
-        <h2>🎒 Инвентарь</h2>
+        <h2>🎒 Предметы с рулетки</h2>
         <div id="inventory"><div>Пусто</div></div>
+
+        <h2>🔫 Активное оружие</h2>
+        <div id="inv-weapons"><div>Пусто</div></div>
+
+        <h2>🛡 Активная броня</h2>
+        <div id="inv-armors"><div>Пусто</div></div>
     </div>
 
         <!-- ==== ВКЛАДКА: PVP ==== -->
@@ -768,6 +851,37 @@
             }
             return league;
         }
+		
+		        // ==== МАГАЗИН ====
+        // type: 'weapon' — даёт +damage к урону в PvP
+        // type: 'armor'  — даёт +hp к HP в PvP
+        // currency: 'dollars' — цена в баксах, 'cabbage' — в капусте
+        // rarity: 'trash' | 'common' | 'uncommon' | 'rare' | 'epic' | 'legend' | 'mythic' | 'ancient' | 'divine'
+        const SHOP_ITEMS = [
+            // ==== ОРУЖИЕ ====
+            { id: 'pistol',  name: 'Ржавый пистолет', type: 'weapon', icon: '🔫', price: 50,   currency: 'dollars', damage: 5,   rarity: 'trash' },
+            { id: 'shotgun', name: 'Обрез',           type: 'weapon', icon: '💥', price: 200,  currency: 'dollars', damage: 12,  rarity: 'common' },
+            { id: 'ak47m',   name: 'AK-47',           type: 'weapon', icon: '🔫', price: 2,    currency: 'cabbage', damage: 30,  rarity: 'rare' },
+
+            // ==== БРОНЯ ====
+            { id: 'jacket',  name: 'Кожанка',         type: 'armor',  icon: '🧥', price: 100,  currency: 'dollars', hp: 20,     rarity: 'trash' },
+            { id: 'vest',    name: 'Бронежилет',      type: 'armor',  icon: '🦺', price: 400,  currency: 'dollars', hp: 50,     rarity: 'common' },
+            { id: 'kevlar',  name: 'Кевлар',          type: 'armor',  icon: '🛡', price: 3,    currency: 'cabbage', hp: 120,    rarity: 'rare' },
+        ];
+
+        // Временные названия редкостей
+        const RARITY_NAMES = {
+            trash:    'Мусор',
+            common:   'Обычное',
+            uncommon: 'Необычное',
+            rare:     'Редкое',
+            epic:     'Эпическое',
+            legend:   'Легендарное',
+            mythic:   'Мифическое',
+            ancient:  'Древнее',
+            divine:   'Божественное',
+        };
+
 
 
         // ==== ПРИЗЫ ====
@@ -818,12 +932,15 @@ let renameCost = 20;       // стоимость смены имени
         let playerXp = 0;
         let workCooldown = 0;
 
-        // ==== PVP ====
+                // ==== PVP ====
         let rating = 0;
         let wins = 0;
         let losses = 0;
-        let currentBot = null;      // текущий противник
-        let battleInterval = null;  // таймер боя
+        let currentBot = null;
+        let battleInterval = null;
+
+        // ==== МАГАЗИН ====
+        let ownedItems = []; // массив id купленных предметов
 
         // ==== ЭЛЕМЕНТЫ ====
         const $balance    = document.getElementById('balance');
@@ -880,6 +997,7 @@ let renameCost = 20;       // стоимость смены имени
     tg.CloudStorage.setItem('rating', String(rating));
     tg.CloudStorage.setItem('wins', String(wins));
     tg.CloudStorage.setItem('losses', String(losses));
+    tg.CloudStorage.setItem('ownedItems', JSON.stringify(ownedItems));
 }
         function load(callback) {
     tg.CloudStorage.getItem('balance', (err, val) => {
@@ -904,9 +1022,14 @@ let renameCost = 20;       // стоимость смены имени
                                             if (!err10 && val10) rating = parseInt(val10, 10) || 0;
                                             tg.CloudStorage.getItem('wins', (err11, val11) => {
                                                 if (!err11 && val11) wins = parseInt(val11, 10) || 0;
-                                                tg.CloudStorage.getItem('losses', (err12, val12) => {
+                                                                                                tg.CloudStorage.getItem('losses', (err12, val12) => {
                                                     if (!err12 && val12) losses = parseInt(val12, 10) || 0;
-                                                    if (callback) callback();
+                                                    tg.CloudStorage.getItem('ownedItems', (err13, val13) => {
+                                                        if (!err13 && val13) {
+                                                            try { ownedItems = JSON.parse(val13); } catch(e) { ownedItems = []; }
+                                                        }
+                                                        if (callback) callback();
+                                                    });
                                                 });
                                             });
                                         });
@@ -943,8 +1066,14 @@ let renameCost = 20;       // стоимость смены имени
                         // Лобби
             renderLobby();
 
-            // PvP
+                        // PvP
             renderPvp();
+
+            // Магазин
+            renderShop();
+
+            // Купленное в инвентаре
+            renderOwned();
         }
 
         function renderLobby() {
@@ -1042,6 +1171,112 @@ let renameCost = 20;       // стоимость смены имени
             const league = getLeague(rating);
             document.getElementById('pvp-league').innerText = `${league.emoji} ${league.name}`;
         }
+		
+		        // ==== МАГАЗИН — ОТРИСОВКА ====
+        function renderShop() {
+            const weapons = SHOP_ITEMS.filter(i => i.type === 'weapon');
+            const armors  = SHOP_ITEMS.filter(i => i.type === 'armor');
+
+            document.getElementById('shop-weapons').innerHTML = weapons.map(renderShopItem).join('');
+            document.getElementById('shop-armors').innerHTML  = armors.map(renderShopItem).join('');
+
+            // Навешиваем обработчики на кнопки
+            document.querySelectorAll('.shop-buy-btn').forEach(btn => {
+    btn.onclick = () => buyItem(btn.dataset.id);
+});
+        }
+
+        function renderShopItem(item) {
+            const owned = ownedItems.includes(item.id);
+            const curIcon = item.currency === 'dollars' ? '💵' : '🥬';
+            const curAmount = item.currency === 'dollars' ? balance : cabbage;
+            const canAfford = curAmount >= item.price;
+
+            const statText = item.type === 'weapon'
+                ? `+${item.damage} урона`
+                : `+${item.hp} HP`;
+
+            let btnHtml;
+            if (owned) {
+                btnHtml = `<button class="shop-buy-btn owned" disabled>✅ Куплено</button>`;
+            } else {
+                btnHtml = `<button class="shop-buy-btn" data-id="${item.id}" ${canAfford ? '' : 'disabled'}>
+                    Купить
+                </button>`;
+            }
+
+            return `
+                <div class="shop-item rarity-${item.rarity}">
+                    <div class="shop-icon">${item.icon}</div>
+                    <div class="shop-info">
+                        <div class="shop-name">${item.name}</div>
+                        <div class="shop-stats">${statText}</div>
+                        <div class="shop-price">${item.price} ${curIcon}</div>
+                    </div>
+                    ${btnHtml}
+                </div>
+            `;
+        }
+
+        function buyItem(itemId) {
+            const item = SHOP_ITEMS.find(i => i.id === itemId);
+            if (!item) return;
+            if (ownedItems.includes(itemId)) return;
+
+            const curAmount = item.currency === 'dollars' ? balance : cabbage;
+            if (curAmount < item.price) return;
+
+            // Списываем
+            if (item.currency === 'dollars') {
+                balance -= item.price;
+            } else {
+                cabbage -= item.price;
+            }
+
+            ownedItems.push(itemId);
+
+            save();
+            render();
+        }
+
+        // ==== ИНВЕНТАРЬ — КУПЛЕННОЕ ====
+        function renderOwned() {
+            const wEl = document.getElementById('inv-weapons');
+            const aEl = document.getElementById('inv-armors');
+
+            const weapons = SHOP_ITEMS.filter(i => i.type === 'weapon' && ownedItems.includes(i.id));
+            const armors  = SHOP_ITEMS.filter(i => i.type === 'armor'  && ownedItems.includes(i.id));
+
+            if (weapons.length === 0) {
+                wEl.innerHTML = '<div>Пусто</div>';
+            } else {
+                wEl.innerHTML = weapons.map(i =>
+                    `<div>${i.icon} ${i.name} <span style="color:#ffcc00">(+${i.damage} урона)</span></div>`
+                ).join('');
+            }
+
+            if (armors.length === 0) {
+                aEl.innerHTML = '<div>Пусто</div>';
+            } else {
+                aEl.innerHTML = armors.map(i =>
+                    `<div>${i.icon} ${i.name} <span style="color:#ffcc00">(+${i.hp} HP)</span></div>`
+                ).join('');
+            }
+        }
+
+        // ==== БОНУСЫ ОТ ПРЕДМЕТОВ ====
+        function getTotalDamageBonus() {
+            return SHOP_ITEMS
+                .filter(i => i.type === 'weapon' && ownedItems.includes(i.id))
+                .reduce((sum, i) => sum + i.damage, 0);
+        }
+
+        function getTotalHpBonus() {
+            return SHOP_ITEMS
+                .filter(i => i.type === 'armor' && ownedItems.includes(i.id))
+                .reduce((sum, i) => sum + i.hp, 0);
+        }
+
 
 
         // ==== ВЫБОР ПРИЗА ====
@@ -1360,14 +1595,21 @@ let renameCost = 20;       // стоимость смены имени
             const botLevel = Math.max(1, playerLevel + randomInt(-1, 3));
             const botName = OPPONENT_NAMES[Math.floor(Math.random() * OPPONENT_NAMES.length)];
 
+                        // Бонусы от купленных предметов
+            const dmgBonus = getTotalDamageBonus();
+            const hpBonus = getTotalHpBonus();
+
+            const playerMaxHp = 50 + playerLevel * 5 + hpBonus;
+            const playerDmg = 5 + playerLevel * 1.5 + dmgBonus;
+
             currentBot = {
                 name: botName,
                 level: botLevel,
-                playerMaxHp: 50 + playerLevel * 5,
+                playerMaxHp: playerMaxHp,
                 botMaxHp: 50 + botLevel * 5,
-                playerHp: 50 + playerLevel * 5,
+                playerHp: playerMaxHp,
                 botHp: 50 + botLevel * 5,
-                playerDmg: 5 + playerLevel * 1.5,
+                playerDmg: playerDmg,
                 botDmg: 4 + botLevel * 1.2,
             };
 
@@ -1503,7 +1745,7 @@ let renameCost = 20;       // стоимость смены имени
 
         // ==== СБРОС ====
         document.getElementById('reset-btn').addEventListener('click', () => {
-                        ['balance','cabbage','inventory','baseName','baseLevel','lastSeen','playerLevel','playerXp','workCooldown','rating','wins','losses']
+                        ['balance','cabbage','inventory','baseName','baseLevel','lastSeen','playerLevel','playerXp','workCooldown','rating','wins','losses','ownedItems']
                 .forEach(k => tg.CloudStorage.removeItem(k));
             location.reload();
         });
