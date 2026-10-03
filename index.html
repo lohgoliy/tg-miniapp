@@ -1010,24 +1010,49 @@
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
-		        // ==== ПРОТИВНИКИ PvP ====
-        const OPPONENT_NAMES = [
-            'Картель Рамиреса',
-            'Банда Хуана',
-            'Синдикат Лопеса',
-            'Клан Диего',
-            'Организация Эрнандес',
-            'Бригада Санчеса',
-            'Семья Моралеса',
-            'Картель Тихуаны',
-            'Банда Койота',
-            'Чёрный Орёл',
-            'Синдикат Гарсиа',
-            'Клан Чикано',
-            'Отряд Кабальеро',
-            'Группировка Кастро',
-            'Братство Пескадора',
+		                // ==== ПРОТИВНИКИ PvP — профили «реальных игроков» ====
+        // Каждый профиль: имя, базовый уровень, экипировка (визуально)
+        const OPPONENT_PROFILES = [
+            { name: 'Рамирес',     level: 1,  weapon: 'Ржавый пистолет', armor: 'Кожанка' },
+            { name: 'Хуан',        level: 2,  weapon: 'Обрез',           armor: 'Кожанка' },
+            { name: 'Лопес',       level: 3,  weapon: 'Обрез',           armor: 'Бронежилет' },
+            { name: 'Диего',       level: 5,  weapon: 'AK-47',           armor: 'Бронежилет' },
+            { name: 'Эрнандес',    level: 7,  weapon: 'AK-47',           armor: 'Кевлар' },
+            { name: 'Санчес',      level: 4,  weapon: 'Ржавый пистолет', armor: 'Бронежилет' },
+            { name: 'Моралес',     level: 6,  weapon: 'Обрез',           armor: 'Кевлар' },
+            { name: 'Тихуана',     level: 10, weapon: 'AK-47',           armor: 'Кевлар' },
+            { name: 'Койот',       level: 8,  weapon: 'Обрез',           armor: 'Кевлар' },
+            { name: 'Чёрный Орёл', level: 15, weapon: 'AK-47',           armor: 'Кевлар' },
+            { name: 'Гарсиа',      level: 12, weapon: 'AK-47',           armor: 'Бронежилет' },
+            { name: 'Чикано',      level: 9,  weapon: 'Обрез',           armor: 'Бронежилет' },
+            { name: 'Кабальеро',   level: 11, weapon: 'AK-47',           armor: 'Кевлар' },
+            { name: 'Кастро',      level: 14, weapon: 'AK-47',           armor: 'Кевлар' },
+            { name: 'Пескадор',    level: 13, weapon: 'Обрез',           armor: 'Кевлар' },
+            { name: 'Гомес',       level: 16, weapon: 'AK-47',           armor: 'Кевлар' },
+            { name: 'Родригес',    level: 18, weapon: 'AK-47',           armor: 'Кевлар' },
+            { name: 'Фернандес',   level: 20, weapon: 'AK-47',           armor: 'Кевлар' },
+            { name: 'Васкес',      level: 22, weapon: 'AK-47',           armor: 'Кевлар' },
+            { name: 'Ромеро',      level: 25, weapon: 'AK-47',           armor: 'Кевлар' },
+            { name: 'Сильва',      level: 28, weapon: 'AK-47',           armor: 'Кевлар' },
+            { name: 'Торрес',      level: 30, weapon: 'AK-47',           armor: 'Кевлар' },
+            { name: 'Ривера',      level: 32, weapon: 'AK-47',           armor: 'Кевлар' },
+            { name: 'Мендоса',     level: 35, weapon: 'AK-47',           armor: 'Кевлар' },
+            { name: 'Ортис',       level: 38, weapon: 'AK-47',           armor: 'Кевлар' },
+            { name: 'Гутьеррес',   level: 40, weapon: 'AK-47',           armor: 'Кевлар' },
+            { name: 'Кастильо',    level: 42, weapon: 'AK-47',           armor: 'Кевлар' },
+            { name: 'Хименес',     level: 45, weapon: 'AK-47',           armor: 'Кевлар' },
+            { name: 'Наварро',     level: 48, weapon: 'AK-47',           armor: 'Кевлар' },
+            { name: 'Иглесиас',    level: 50, weapon: 'AK-47',           armor: 'Кевлар' },
         ];
+
+        // Префиксы для разнообразия имён
+        const CARTEL_PREFIXES = ['Картель', 'Банда', 'Синдикат', 'Клан', 'Организация', 'Бригада', 'Семья', 'Отряд', 'Группировка', 'Братство'];
+
+        // Генерация полного имени противника
+        function generateOpponentName(profile) {
+            const prefix = CARTEL_PREFIXES[Math.floor(Math.random() * CARTEL_PREFIXES.length)];
+            return `${prefix} ${profile.name}`;
+        }
 
         // ==== РЕЙТИНГ И ЛИГИ ====
         const LEAGUES = [
@@ -2047,38 +2072,87 @@ let renameCost = 20;       // стоимость смены имени
             $hpBotText.innerText = `${Math.max(0, currentBot.botHp)} / ${currentBot.botMaxHp}`;
         }
 
-        $findBtn.addEventListener('click', () => {
-            // Создаём противника
-            const botLevel = Math.max(1, playerLevel + randomInt(-1, 3));
-            const botName = OPPONENT_NAMES[Math.floor(Math.random() * OPPONENT_NAMES.length)];
+                $findBtn.addEventListener('click', () => {
+            // ==== ВЫБОР ПРОТИВНИКА ====
+            // Ищем профиль близкого уровня
+            const playerPower = playerLevel * 10 + getTotalDamageBonus() + getTotalHpBonus();
+            const targetLevel = Math.max(1, Math.round(playerPower / 15));
 
-                        // Бонусы от купленных предметов
+            // Фильтруем подходящие профили (±5 уровней)
+            const candidates = OPPONENT_PROFILES.filter(p =>
+                p.level >= targetLevel - 5 && p.level <= targetLevel + 5
+            );
+            const pool = candidates.length > 0 ? candidates : OPPONENT_PROFILES;
+            const profile = pool[Math.floor(Math.random() * pool.length)];
+
+            const botName = generateOpponentName(profile);
+
+            // Бонусы от купленных предметов
             const dmgBonus = getTotalDamageBonus();
             const hpBonus = getTotalHpBonus();
 
+            // ==== СТАТЫ ИГРОКА ====
             const playerMaxHp = 50 + playerLevel * 5 + hpBonus;
             const playerDmg = 5 + playerLevel * 1.5 + dmgBonus;
 
+            // ==== СТАТЫ БОТА ====
+            // Бот получает 70% твоих бонусов + свой уровень из профиля
+            const botDmgBonus = Math.round(dmgBonus * 0.7);
+            const botHpBonus = Math.round(hpBonus * 0.7);
+
+            const botBaseLevel = profile.level;
+            let botMaxHp = 50 + botBaseLevel * 5 + botHpBonus;
+            let botDmg = 4 + botBaseLevel * 1.2 + botDmgBonus;
+
+            // ==== БОСС (5% шанс) ====
+            const isBoss = Math.random() < 0.05;
+            let rewardMultiplier = 1;
+
+            if (isBoss) {
+                botMaxHp = Math.round(botMaxHp * 1.5);
+                botDmg = Math.round(botDmg * 1.5);
+                rewardMultiplier = 2;
+            }
+
+            // ==== ВАРЬИРУЕМ ±10% (как будто у противника свой рандом) ====
+            const variance = 0.9 + Math.random() * 0.2; // 0.9–1.1
+            botMaxHp = Math.round(botMaxHp * variance);
+            botDmg = Math.round(botDmg * variance);
+
             currentBot = {
                 name: botName,
-                level: botLevel,
+                level: botBaseLevel,
+                weapon: profile.weapon,
+                armor: profile.armor,
+                isBoss: isBoss,
+                rewardMultiplier: rewardMultiplier,
                 playerMaxHp: playerMaxHp,
-                botMaxHp: 50 + botLevel * 5,
+                botMaxHp: botMaxHp,
                 playerHp: playerMaxHp,
-                botHp: 50 + botLevel * 5,
+                botHp: botMaxHp,
                 playerDmg: playerDmg,
-                botDmg: 4 + botLevel * 1.2,
+                botDmg: botDmg,
             };
 
-            // Показываем экран боя
+                        // Показываем экран боя
             $findBtn.style.display = 'none';
             $pvpBattle.style.display = 'block';
             $pvpResult.style.display = 'none';
             $battleLog.innerHTML = '';
-            $botName.innerText = `🤖 ${botName} (ур. ${botLevel})`;
+
+            // Имя бота с пометкой босса
+            const bossMark = isBoss ? '👑 БОСС: ' : '';
+            $botName.innerText = `${bossMark}${botName} (ур. ${botBaseLevel})`;
+
             updateHpBars();
 
-            logBattle(`⚔️ Бой начался! ${botName} (ур. ${botLevel})`, 'log-info');
+            // Лог: показываем экипировку противника
+            logBattle(`⚔️ Противник: ${botName} (ур. ${botBaseLevel})`, 'log-info');
+            logBattle(`🔫 ${profile.weapon} | 🛡 ${profile.armor}`, 'log-info');
+            if (isBoss) {
+                logBattle(`👑 ЭТО БОСС! Награда ×2`, 'log-info');
+            }
+            logBattle(`─────────────────`, 'log-info');
 
             // 15 секунд боя = 30 ударов (по 0.5 сек)
             let tick = 0;
@@ -2130,10 +2204,13 @@ let renameCost = 20;       // стоимость смены имени
                 const baseReward = 20 + currentBot.level * 10;
                 const xpReward = 10 + currentBot.level * 5;
 
+                // Множитель за босса
+                const bossMultiplier = currentBot.rewardMultiplier || 1;
+
                 // Серия
                 winStreak += 1;
                 const mult = getStreakMultiplier(winStreak);
-                const reward = Math.round(baseReward * mult);
+                const reward = Math.round(baseReward * mult * bossMultiplier);
 
                 // Ежедневный бонус
                 const today = getMoscowDate();
@@ -2152,6 +2229,9 @@ let renameCost = 20;       // стоимость смены имени
                 wins += 1;
 
                 let extraInfo = '';
+                if (bossMultiplier > 1) {
+                    extraInfo += `<br>👑 БОСС побеждён! Награда ×${bossMultiplier}`;
+                }
                 if (mult > 1) {
                     extraInfo += `<br>🔥 Серия ×${winStreak} → множитель ×${mult}`;
                 }
