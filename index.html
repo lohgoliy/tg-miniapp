@@ -430,6 +430,74 @@
         #pvp-result {
             margin-top: 12px;
         }
+		        /* ==== PVP: СЕРИЯ, ЗНАЧКИ, ЛИДЕРБОРД ==== */
+        #pvp-streak-panel {
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 10px 12px;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+        .streak-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+        }
+        .streak-row span { color: #888; }
+        .streak-row b { color: #ffcc00; }
+
+        #pvp-badges-panel,
+        #pvp-leaderboard-panel {
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 10px 12px;
+            margin-bottom: 12px;
+            text-align: left;
+        }
+        .badges-title {
+            font-size: 14px;
+            color: #aaa;
+            margin-bottom: 8px;
+        }
+
+        .badges-list {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .badge {
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            border: 1px solid #444;
+        }
+        .badge.earned {
+            border-color: #ffcc00;
+            color: #ffcc00;
+            box-shadow: 0 0 8px rgba(255, 204, 0, 0.3);
+        }
+        .badge.locked {
+            opacity: 0.4;
+        }
+
+        #pvp-leaderboard {
+            font-size: 13px;
+        }
+        .lb-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid #3a3a3a;
+        }
+        .lb-row:last-child { border-bottom: none; }
+        .lb-rank { color: #888; width: 30px; }
+        .lb-name { color: #eee; flex: 1; text-align: left; padding-left: 8px; }
+        .lb-rating { color: #ffcc00; font-weight: bold; }
+
 		        /* ==== МАГАЗИН ==== */
         .shop-item {
             background: #2a2a2a;
@@ -805,7 +873,7 @@
     </div>
 
 
-        <!-- ==== ВКЛАДКА: PVP ==== -->
+            <!-- ==== ВКЛАДКА: PVP ==== -->
     <div class="tab-content" id="tab-pvp">
         <div id="pvp-panel">
             <div class="pvp-stat">
@@ -824,6 +892,31 @@
                 <span>💀 Поражения</span>
                 <b id="pvp-losses">0</b>
             </div>
+        </div>
+
+        <div id="pvp-streak-panel">
+            <div class="streak-row">
+                <span>🔥 Серия побед</span>
+                <b id="pvp-streak">0</b>
+            </div>
+            <div class="streak-row">
+                <span>💰 Множитель награды</span>
+                <b id="pvp-multiplier">×1</b>
+            </div>
+            <div class="streak-row">
+                <span>📅 Ежедневный бонус</span>
+                <b id="pvp-daily">✅ Доступен</b>
+            </div>
+        </div>
+
+        <div id="pvp-badges-panel">
+            <div class="badges-title">🏅 Значки за победы</div>
+            <div id="pvp-badges" class="badges-list"></div>
+        </div>
+
+        <div id="pvp-leaderboard-panel">
+            <div class="badges-title">📊 Топ-5 картелей</div>
+            <div id="pvp-leaderboard"></div>
         </div>
 
         <div id="pvp-find">
@@ -952,6 +1045,53 @@
             }
             return league;
         }
+		        // ==== PVP: СЕРИЯ И ЗНАЧКИ ====
+        // Пороги серии: сколько побед подряд → множитель
+        const STREAK_THRESHOLDS = [
+            { streak: 3,  mult: 1.5 },
+            { streak: 5,  mult: 2.0 },
+            { streak: 10, mult: 3.0 },
+        ];
+
+        // Значки за общее количество побед
+        const WIN_BADGES = [
+            { wins: 10,  emoji: '🥇', name: '10 побед' },
+            { wins: 50,  emoji: '✨', name: '50 побед' },
+            { wins: 100, emoji: '💎', name: '100 побед' },
+        ];
+
+        // Ежедневный бонус
+        const DAILY_BONUS = 100; // баксов за первую победу дня
+
+        // Топ-5 ботов (статичный лидерборд, для вида)
+        const LEADERBOARD = [
+            { name: 'Картель Тихуаны',   rating: 8500 },
+            { name: 'Синдикат Гарсиа',   rating: 5200 },
+            { name: 'Чёрный Орёл',       rating: 3100 },
+            { name: 'Братство Пескадора',rating: 1800 },
+            { name: 'Клан Диего',        rating: 950  },
+        ];
+
+        // Получить множитель по текущей серии
+        function getStreakMultiplier(streak) {
+            let mult = 1;
+            for (const t of STREAK_THRESHOLDS) {
+                if (streak >= t.streak) mult = t.mult;
+            }
+            return mult;
+        }
+
+        // Получить текущую дату в МСК (YYYY-MM-DD)
+        function getMoscowDate() {
+            // МСК = UTC+3
+            const now = new Date();
+            const msk = new Date(now.getTime() + (3 * 60 * 60 * 1000) - (now.getTimezoneOffset() * 60 * 1000));
+            const y = msk.getUTCFullYear();
+            const m = String(msk.getUTCMonth() + 1).padStart(2, '0');
+            const d = String(msk.getUTCDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
 		
 		        // ==== МАГАЗИН ====
         // type: 'weapon' — даёт +damage к урону в PvP
@@ -1066,6 +1206,8 @@ let renameCost = 20;       // стоимость смены имени
         let losses = 0;
         let currentBot = null;
         let battleInterval = null;
+        let winStreak = 0;           // текущая серия побед подряд
+        let lastDailyBonusDate = ''; // дата последнего ежедневного бонуса (YYYY-MM-DD)
 
                 // ==== МАГАЗИН ====
         let ownedItems = []; // массив id купленных предметов
@@ -1132,6 +1274,8 @@ let renameCost = 20;       // стоимость смены имени
     tg.CloudStorage.setItem('losses', String(losses));
     tg.CloudStorage.setItem('ownedItems', JSON.stringify(ownedItems));
     tg.CloudStorage.setItem('ownedBusinesses', JSON.stringify(ownedBusinesses));
+    tg.CloudStorage.setItem('winStreak', String(winStreak));
+    tg.CloudStorage.setItem('lastDailyBonusDate', lastDailyBonusDate);
 }
         function load(callback) {
     tg.CloudStorage.getItem('balance', (err, val) => {
@@ -1162,11 +1306,17 @@ let renameCost = 20;       // стоимость смены имени
                                                         if (!err13 && val13) {
                                                             try { ownedItems = JSON.parse(val13); } catch(e) { ownedItems = []; }
                                                         }
-                                                        tg.CloudStorage.getItem('ownedBusinesses', (err14, val14) => {
+                                                                                                                tg.CloudStorage.getItem('ownedBusinesses', (err14, val14) => {
                                                             if (!err14 && val14) {
                                                                 try { ownedBusinesses = JSON.parse(val14); } catch(e) { ownedBusinesses = {}; }
                                                             }
-                                                            if (callback) callback();
+                                                            tg.CloudStorage.getItem('winStreak', (err15, val15) => {
+                                                                if (!err15 && val15) winStreak = parseInt(val15, 10) || 0;
+                                                                tg.CloudStorage.getItem('lastDailyBonusDate', (err16, val16) => {
+                                                                    if (!err16 && val16) lastDailyBonusDate = val16;
+                                                                    if (callback) callback();
+                                                                });
+                                                            });
                                                         });
                                                     });
                                                 });
@@ -1304,7 +1454,7 @@ let renameCost = 20;       // стоимость смены имени
 
             if (playerLevel >= MAX_PLAYER_LEVEL) playerXp = 0;
         }
-		        // ==== ОТРИСОВКА PVP ====
+		                // ==== ОТРИСОВКА PVP ====
         function renderPvp() {
             document.getElementById('pvp-rating').innerText = rating;
             document.getElementById('pvp-wins').innerText = wins;
@@ -1312,6 +1462,40 @@ let renameCost = 20;       // стоимость смены имени
 
             const league = getLeague(rating);
             document.getElementById('pvp-league').innerText = `${league.emoji} ${league.name}`;
+
+            // Серия и множитель
+            document.getElementById('pvp-streak').innerText = winStreak;
+            const mult = getStreakMultiplier(winStreak);
+            document.getElementById('pvp-multiplier').innerText = `×${mult}`;
+
+            // Ежедневный бонус
+            const today = getMoscowDate();
+            const dailyAvailable = (lastDailyBonusDate !== today);
+            document.getElementById('pvp-daily').innerText = dailyAvailable ? '✅ Доступен' : '⏳ Уже получен';
+            document.getElementById('pvp-daily').style.color = dailyAvailable ? '#66ff66' : '#888';
+
+            // Значки
+            const badgesEl = document.getElementById('pvp-badges');
+            badgesEl.innerHTML = WIN_BADGES.map(b => {
+                const earned = wins >= b.wins;
+                return `<div class="badge ${earned ? 'earned' : 'locked'}">
+                    ${b.emoji} ${b.name}
+                </div>`;
+            }).join('');
+
+            // Лидерборд
+            const lbEl = document.getElementById('pvp-leaderboard');
+            const playerRow = { name: `👤 ${baseName}`, rating: rating, isPlayer: true };
+            const allRows = [...LEADERBOARD, playerRow].sort((a, b) => b.rating - a.rating);
+            lbEl.innerHTML = allRows.map((r, i) => {
+                const rankEmoji = i === 0 ? '👑' : i === 1 ? '🥇' : i === 2 ? '🥈' : i === 3 ? '🥉' : `${i + 1}.`;
+                const bold = r.isPlayer ? 'style="color:#ffcc00;font-weight:bold;"' : '';
+                return `<div class="lb-row" ${bold}>
+                    <span class="lb-rank">${rankEmoji}</span>
+                    <span class="lb-name">${r.name}</span>
+                    <span class="lb-rating">${r.rating}</span>
+                </div>`;
+            }).join('');
         }
 		
 		        // ==== МАГАЗИН — ОТРИСОВКА ====
@@ -1937,29 +2121,55 @@ let renameCost = 20;       // стоимость смены имени
             }, 500);
         });
 
-        function endBattle(win) {
+                function endBattle(win) {
             $pvpBattle.style.display = 'none';
             $pvpResult.style.display = 'block';
             $findBtn.style.display = 'block';
 
             if (win) {
-                const reward = 20 + currentBot.level * 10;
+                const baseReward = 20 + currentBot.level * 10;
                 const xpReward = 10 + currentBot.level * 5;
 
-                balance += reward;
+                // Серия
+                winStreak += 1;
+                const mult = getStreakMultiplier(winStreak);
+                const reward = Math.round(baseReward * mult);
+
+                // Ежедневный бонус
+                const today = getMoscowDate();
+                const dailyAvailable = (lastDailyBonusDate !== today);
+                let dailyBonus = 0;
+                if (dailyAvailable) {
+                    dailyBonus = DAILY_BONUS;
+                    lastDailyBonusDate = today;
+                }
+
+                const totalReward = reward + dailyBonus;
+
+                balance += totalReward;
                 addXp(xpReward);
                 rating += 10;
                 wins += 1;
+
+                let extraInfo = '';
+                if (mult > 1) {
+                    extraInfo += `<br>🔥 Серия ×${winStreak} → множитель ×${mult}`;
+                }
+                if (dailyBonus > 0) {
+                    extraInfo += `<br>📅 Ежедневный бонус: +${dailyBonus} 💵`;
+                }
 
                 $resultTitle.innerText = '🏆 Победа!';
                 $resultTitle.style.color = '#66ff66';
                 $resultText.innerHTML = `
                     Ты победил <b>${currentBot.name}</b><br><br>
-                    💵 +${reward} баксов<br>
+                    💵 +${totalReward} баксов<br>
                     ⭐ +${xpReward} XP<br>
                     🏆 +10 рейтинга
+                    ${extraInfo}
                 `;
             } else {
+                winStreak = 0; // серия сбрасывается
                 rating = Math.max(0, rating - 5);
                 losses += 1;
 
@@ -1968,6 +2178,7 @@ let renameCost = 20;       // стоимость смены имени
                 $resultText.innerHTML = `
                     <b>${currentBot.name}</b> оказался сильнее<br><br>
                     🏆 −5 рейтинга<br>
+                    🔥 Серия сброшена<br>
                     Деньги не потеряны
                 `;
             }
@@ -2018,7 +2229,7 @@ let renameCost = 20;       // стоимость смены имени
 
         // ==== СБРОС ====
         document.getElementById('reset-btn').addEventListener('click', () => {
-                        ['balance','cabbage','inventory','baseName','baseLevel','lastSeen','playerLevel','playerXp','workCooldown','rating','wins','losses','ownedItems','ownedBusinesses']
+                        ['balance','cabbage','inventory','baseName','baseLevel','lastSeen','playerLevel','playerXp','workCooldown','rating','wins','losses','ownedItems','ownedBusinesses','winStreak','lastDailyBonusDate']
                 .forEach(k => tg.CloudStorage.removeItem(k));
             location.reload();
         });
